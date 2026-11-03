@@ -5,31 +5,13 @@ import {supabase} from '../lib/supabase';
 import {studyDay} from '../lib/study-day';
 import StudyDashboard from '../components/study-dashboard';
 import {readAppearance,appearanceStorageKeys,type Accent,type FontChoice} from '../lib/appearance';
-import {authErrorMessage,authReturnUrl,brandSubtitle,cleanDisplayName,DISPLAY_NAME_KEY,storedDisplayName} from '../lib/auth-ui';
+import {authErrorMessage,authReturnUrl,brandSubtitle} from '../lib/auth-ui';
 
 const tabs=['오늘','시험 대비','통계','친구','설정'];
 const tabIcons=['◷','▦','▥','♧','⚙'];
 type AuthMode='login'|'signup'|'forgot'|'recovery';
 function PasswordFields({confirmation=false,autoComplete='new-password'}:{confirmation?:boolean;autoComplete?:string}) {
  return <><label>비밀번호<input name="password" type="password" autoComplete={autoComplete} minLength={8} maxLength={128} required placeholder="8자 이상"/></label>{confirmation&&<label>비밀번호 확인<input name="password_confirm" type="password" autoComplete="new-password" minLength={8} maxLength={128} required placeholder="같은 비밀번호를 다시 입력"/></label>}</>;
-}
-function ProfileSettings({user,onSaved}:{user:User;onSaved:(user:User)=>void}) {
- const [draft,setDraft]=useState(()=>storedDisplayName(user.user_metadata));
- const [busy,setBusy]=useState(false);
- const [notice,setNotice]=useState('');
- async function save(e:FormEvent<HTMLFormElement>){
-  e.preventDefault();const name=cleanDisplayName(draft);
-  if(!name){setNotice('표시할 이름을 입력해 주세요.');return;}
-  if(!supabase){setNotice('서버에 연결되지 않았어요.');return;}
-  setBusy(true);setNotice('');
-  try{
-   const {data,error}=await supabase.auth.updateUser({data:{[DISPLAY_NAME_KEY]:name}});
-   if(error){setNotice(authErrorMessage(error,'name'));return;}
-   onSaved(data.user);setDraft(name);setNotice('이름을 저장했어요. 왼쪽 차근 문구에도 반영됐어요.');
-  }catch{setNotice('서버와 연결할 수 없어요. 다시 시도해 주세요.');}
-  finally{setBusy(false);}
- }
- return <section className="card profile-settings"><p className="eyebrow">MY PROFILE</p><h2>내 이름 설정</h2><p>로그인 후 차근 왼쪽에 표시되는 문구를 바꿔요. 내 계정에 저장되므로 다른 기기에서도 적용돼요.</p><form onSubmit={save}><label>표시할 이름<input type="text" name="display-name" autoComplete="nickname" required maxLength={24} value={draft} onChange={e=>setDraft(e.target.value)} placeholder="예: 지훈"/></label><p className="profile-preview">미리 보기: <strong>{brandSubtitle(true,{[DISPLAY_NAME_KEY]:cleanDisplayName(draft)})}</strong></p><button className="primary compact" disabled={busy}>{busy?'저장 중…':'이름 저장'}</button></form>{notice&&<p className="notice" role="status">{notice}</p>}<p className="fine">친구 메뉴의 공개 별명과는 별도의 설정이며, 이메일 주소는 다른 사용자에게 표시하지 않아요.</p></section>;
 }
 export default function Home(){
  const [tab,setTab]=useState('오늘');
@@ -105,8 +87,7 @@ export default function Home(){
    <section className="heading"><div><p className="eyebrow">CHAGEUN · MY STUDY SPACE</p><h1>{tab==='오늘'?'오늘도 한 걸음, 차근.':tab}</h1><p>나의 속도로 계획하고, 하루의 성실함을 쌓아가요.</p></div><span className="badge">차근 · 나의 공부 공간</span></section>
    {authenticated&&session?<>
     <div className="account-strip"><span>{session.user.email}</span><button className="small" onClick={()=>void logout()}>로그아웃</button></div>
-    {tab==='설정'&&<ProfileSettings key={session.user.id} user={session.user} onSaved={updateProfileUser}/>}
-    {now&&<StudyDashboard key={session.user.id} userId={session.user.id} tab={tab} now={now.getTime()} appearance={{dark,accent,font}} onAppearanceTheme={setAppearanceTheme} onAppearanceAccent={setAppearanceAccent} onAppearanceFont={setAppearanceFont}/>}
+    {now&&<StudyDashboard key={session.user.id} userId={session.user.id} tab={tab} now={now.getTime()} profileUser={session.user} onProfileSaved={updateProfileUser} appearance={{dark,accent,font}} onAppearanceTheme={setAppearanceTheme} onAppearanceAccent={setAppearanceAccent} onAppearanceFont={setAppearanceFont}/>}
    </>:<div className="grid auth-layout">
     <section className="hero"><p>지금 이 순간</p><div className="clock">{now?new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}).format(now):'--:--'}</div><p>{now?`${studyDay(now)} 학습일`:'한국 시간 기준'}</p><div className="hero-note">새벽의 노력도 어제의 기록에.<br/>하루는 오전 6시에 새롭게 시작해요.</div></section>
     <section className="card auth-card"><p className="eyebrow">MY ACCOUNT</p><h2>{mode==='signup'?'새 계정 만들기':mode==='forgot'?'비밀번호 찾기':mode==='recovery'?'새 비밀번호 설정':'나의 공부 공간에 로그인'}</h2>
