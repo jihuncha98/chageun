@@ -24,9 +24,6 @@ export default function ExamPlanning({data,write,busy,now}:{
  const dayProgress=taskProgress(currentTasks);
  const subjects=alive(data.subjects);
  const subjectName=(id:string)=>data.subjects.find(s=>s.id===id)?.name??'과목';
- const subjectProgress=Array.from(new Set(currentTasks.map(t=>t.subjectId))).map(id=>({
-  id,name:subjectName(id),...taskProgress(currentTasks.filter(t=>t.subjectId===id))
- })).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
  const dateExams=exams.filter(e=>e.date===selectedDate);
 
  async function saveExam(e:FormEvent<HTMLFormElement>) {
@@ -51,7 +48,7 @@ export default function ExamPlanning({data,write,busy,now}:{
   const saved=await write(d=>{
    let sub=alive(d.subjects).find(s=>subjectKey(s.name)===subjectKey(name));
    if(!sub){sub={id:uid(),name,archived:false,deleted_at:null};d.subjects.push(sub);}
-   if(sub.archived)throw Error('보관된 과목이에요. 설정에서 보관을 해제해 주세요.');
+   if(sub.archived)sub.archived=false; // Reusing an archived subject keeps its existing study records.
    if(editingTask){const t=d.tasks.find(x=>x.id===editingTask.id);if(!t)throw Error('할 일을 찾지 못했어요.');t.day=selectedDate;t.subjectId=sub.id;t.title=title;}
    else d.tasks.push({id:uid(),deleted_at:null,day:selectedDate,subjectId:sub.id,title,done:false});
   });
@@ -141,17 +138,6 @@ export default function ExamPlanning({data,write,busy,now}:{
    </form>
   </section>
 
-  <section className="card below">
-   <div className="section-title"><h2>과목별 진행률</h2><span>{selectedDate} 기준</span></div>
-   <p className="fine">진행률 = 완료한 할 일 수 ÷ 해당 과목의 전체 계획 수. 공부 시간과는 별도로 계산해요.</p>
-   {subjectProgress.length===0?<p>과목별 진행률을 보려면 위에서 공부 계획을 추가해 주세요.</p>:
-    subjectProgress.map(x=><div className="subject-progress" key={x.id}>
-     <div className="section-title"><strong>{x.name}</strong><span>{x.done}/{x.total}개 · {x.percent}%</span></div>
-     <div className="progress-track" role="progressbar" aria-label={`${x.name} 계획 완료율`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={x.percent??0}>
-      <div className="progress-fill" style={{width:`${x.percent??0}%`}}/>
-     </div>
-    </div>)}
-  </section>
   {error&&<p role="alert" className="notice error">{error}</p>}
  </div>;
 }

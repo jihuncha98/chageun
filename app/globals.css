@@ -36,3 +36,64 @@ button.small{padding:9px 12px;border:1px solid var(--line);border-radius:9px;bac
 @media(max-width:640px){.stats-overview{gap:9px}.stats-overview>div{padding:12px}.stats-overview strong{font-size:16px}.stats-overview span,.stats-overview small{font-size:11px}.stats-range{margin-top:7px}.stats-day{min-height:202px}.stats-bottom{gap:0}.stats-bottom>.below{margin-top:16px}
  aside{box-shadow:0 -8px 24px #0e244018}nav button{flex:1;min-width:0}nav button[aria-current]{border-radius:10px}main{overflow-x:clip}.friend-rank-time{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.stats-bar-fill{transition:none}html:focus-within{scroll-behavior:auto}}
+
+
+/* Chageun usability update: spacious, non-overlapping layouts and local appearance preferences. */
+.app{--accent:#2865df;--accent-mid:#4484f3;--accent-strong:#1d55c8;--accent-soft:#eaf2ff;--accent-border:#bdd4ff;font-family:Arial,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+.app[data-font="serif"]{font-family:'Noto Serif CJK KR','Nanum Myeongjo','Batang','Times New Roman',serif}
+.app[data-font="rounded"]{font-family:'NanumSquareRound','Arial Rounded MT Bold','Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+.app[data-accent="violet"]{--accent:#7351d7;--accent-mid:#9776ed;--accent-strong:#5730b2;--accent-soft:#f2edff;--accent-border:#d6c5ff}
+.app[data-accent="mint"]{--accent:#087d72;--accent-mid:#17a594;--accent-strong:#09655d;--accent-soft:#e8f8f4;--accent-border:#9ce1d3}
+.app[data-accent="coral"]{--accent:#c84d65;--accent-mid:#e87c82;--accent-strong:#a6304c;--accent-soft:#fff0f2;--accent-border:#f4b8c1}
+.app.dark{--accent-soft:#263d61}
+.app.dark[data-accent="violet"]{--accent-soft:#372a55}
+.app.dark[data-accent="mint"]{--accent-soft:#1a453e}
+.app.dark[data-accent="coral"]{--accent-soft:#552a37}
+.app :is(button,input,select,textarea){font-family:inherit}
+.app :is(.grid,.study-columns,.today-top,.stats-bottom,.exam-form-grid,.two,.friend-profile-grid,.stats-overview)>*{min-width:0}
+.app :is(.card,.record-row,.plan-row,.exam-row,.friend-rank-row,.section-title,.task-main,.friend-share-strip,.school-list>div)>*{min-width:0}
+.app :is(input,select,textarea){max-width:100%;min-width:0}
+.app .record-row,.app .section-title,.app .exam-row,.app .plan-row,.app .calendar-toolbar,.app .school-list>div{overflow-wrap:anywhere}
+.app .exam-form-grid,.app .two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.app .friend-profile-grid{grid-template-columns:minmax(0,1fr) minmax(0,.8fr)}
+.app .brand,.app .timer,.app .exam-countdown,.app .exam-d-day,.app .friend-rank-number{color:var(--accent)}
+.app nav button[aria-current="page"],.app .calendar-day.chosen{background:var(--accent-soft);color:var(--accent-strong)}
+.app .calendar-day.chosen{border-color:var(--accent)}
+.app .primary,.app .progress-fill,.app .stats-bar-fill{background:var(--accent)}
+.app .hero,.app .summary-card{background:linear-gradient(120deg,var(--accent-strong),var(--accent-mid))}
+.app .exam-today-banner{border-color:var(--accent-border);border-left-color:var(--accent)}
+.app .blue{background:var(--accent-soft)!important;color:var(--accent-strong)!important}
+.app .check,.app .subject-tag{color:var(--accent);}
+.app .subject-tag{background:var(--accent-soft)}
+.app.dark .subject-tag,.app.dark .blue,.app.dark .school-list .current{background:var(--accent-soft)!important;color:var(--accent-mid)!important}
+.app .current-class,.app .running,.app .summary-card,.app .friend-code-panel{min-width:0}
+.app .summary-card strong,.app .timer{overflow-wrap:anywhere}
+/* Prevent date-input intrinsic width from overlapping the adjacent Today button. */
+.today-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;margin:22px 0 24px}
+.today-controls .daybar{display:flex;align-items:end;justify-content:flex-start;gap:12px 14px;flex-wrap:wrap;margin:0;min-width:0}
+.today-controls .daybar-date{flex:0 1 225px;width:225px;min-width:0;max-width:100%;margin:0}
+.today-controls .daybar-date input{display:block;width:100%;max-width:100%;min-width:0;margin:6px 0 0;padding:12px 14px;min-height:46px}
+.today-controls .daybar-today{flex-shrink:0;min-height:46px;padding:10px 15px}
+.today-controls .daybar-range{flex:0 1 auto;min-width:0;padding-bottom:10px;white-space:normal}
+.live-clock{display:flex;flex-direction:column;align-items:flex-end;gap:5px;min-width:192px;padding:11px 16px;border:1px solid var(--accent-border);background:var(--panel);border-radius:15px;text-align:right}
+.live-clock .eyebrow{font-size:10px;letter-spacing:.7px}
+.live-clock strong{font-size:30px;letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1.2;color:var(--text)}
+.live-clock small{font-size:11px;color:var(--muted)}
+.app .running{gap:16px}.app .running>div:first-child{min-width:0;flex:1 1 220px}
+.app .record-row .actions,.app .plan-row .actions{flex:0 1 auto;min-width:0}
+.app .calendar-toolbar{flex-wrap:wrap}
+.appearance-settings h2{margin:6px 0 8px}.appearance-group{border-top:1px solid var(--line);padding-top:18px;margin-top:20px}
+.appearance-group h3{font-size:15px;margin:0 0 12px}
+.appearance-button-group,.appearance-color-choices{display:flex;flex-wrap:wrap;gap:10px}
+.appearance-button-group button[aria-pressed="true"],.appearance-color-option[aria-pressed="true"]{border:2px solid var(--accent);background:var(--accent-soft);color:var(--text);font-weight:700}
+.appearance-color-option{display:flex;align-items:center;gap:9px;min-height:43px;padding:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--text);font-size:13px}
+.appearance-dot{width:18px;height:18px;display:inline-block;border-radius:50%;flex:none}.accent-blue{background:#2865df}.accent-violet{background:#7351d7}.accent-mint{background:#087d72}.accent-coral{background:#c84d65}
+.font-choice.font-serif{font-family:'Noto Serif CJK KR','Batang',serif}.font-choice.font-rounded{font-family:'NanumSquareRound','Arial Rounded MT Bold','Malgun Gothic',sans-serif}
+@media(max-width:1250px){.today-controls{grid-template-columns:1fr}.live-clock{align-items:flex-start;text-align:left;max-width:320px}.app .friend-profile-grid{grid-template-columns:1fr}}
+@media(max-width:950px){.app .study-columns,.app .today-top,.app .stats-bottom{grid-template-columns:1fr}.app .school-list>div{flex-wrap:wrap}.app .school-list span{margin-left:0}}
+@media(max-width:640px){.today-controls{margin:18px 0;gap:12px}.today-controls .daybar-date{flex-basis:min(100%,220px)}.today-controls .daybar-range{flex-basis:100%;padding:0}.live-clock{max-width:none;width:100%}.live-clock strong{font-size:28px}.app .two,.app .exam-form-grid{grid-template-columns:1fr}.app .summary-card strong{font-size:clamp(26px,9vw,42px)}.app .timer{font-size:clamp(24px,7vw,34px)}.app .friend-rank-time{white-space:normal;overflow-wrap:anywhere}.app .card{min-width:0}}
+@media(max-width:360px){.app .friend-rank-row{flex-wrap:wrap}.app .friend-rank-time{margin-left:38px}.app .heading h1{overflow-wrap:anywhere}.today-controls .daybar-date{flex-basis:100%}}
+
+/* Accessible selected colors on darker surfaces. */
+.app.dark nav button[aria-current="page"],.app.dark .calendar-day.chosen{color:var(--text)}
+.app.dark .live-clock{background:var(--panel)}
