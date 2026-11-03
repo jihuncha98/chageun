@@ -55,14 +55,15 @@ export default function FriendsView({now}:{now:number}){
   return()=>{alive.current=false;clearTimeout(initialRefresh);clearInterval(interval);document.removeEventListener('visibilitychange',onVisible);window.removeEventListener('online',onOnline);};
  },[refresh]);
  async function act(name:string,args:Record<string,unknown>,success:string){
-  if(!supabase||busy)return;
+  if(!supabase||busy)return false;
   setBusy(true);setError('');setNotice('');
   try{
    const {error:failed}=await supabase.rpc(name,args);
    if(failed)throw failed;
    setNotice(success);
    await refresh(true);
-  }catch(e){setError(message(e));}
+   return true;
+  }catch(e){setError(message(e));return false;}
   finally{setBusy(false);}
  }
  async function saveProfile(e:FormEvent<HTMLFormElement>){
@@ -78,8 +79,8 @@ export default function FriendsView({now}:{now:number}){
  async function request(e:FormEvent<HTMLFormElement>){
   e.preventDefault();
   if(!validFriendCode(code)){setError('친구 코드는 영문·숫자 16자리예요.');return;}
-  await act('friend_send_request',{p_code:code.trim().toUpperCase()},'친구 요청을 보냈어요. 상대방이 수락해야 공부 시간이 보여요.');
-  setCode('');
+  const sent=await act('friend_send_request',{p_code:code.trim().toUpperCase()},'친구 요청을 보냈어요. 상대방이 수락해야 공부 시간이 보여요.');
+  if(sent)setCode('');
  }
  const ranked=useMemo(()=>rankFriends(board),[board]);
  const incoming=overview?.connections.filter(c=>c.status==='pending'&&!c.requestedByMe)??[];
