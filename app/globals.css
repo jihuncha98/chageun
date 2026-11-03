@@ -97,3 +97,13 @@ button.small{padding:9px 12px;border:1px solid var(--line);border-radius:9px;bac
 /* Accessible selected colors on darker surfaces. */
 .app.dark nav button[aria-current="page"],.app.dark .calendar-day.chosen{color:var(--text)}
 .app.dark .live-clock{background:var(--panel)}
+
+/* Account creation / password recovery / per-account name (v1.2) */
+.auth-card{min-width:0}.auth-card .auth-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:18px}
+.auth-card .auth-links .small{flex:0 0 auto}.auth-card .auth-feedback{margin-top:14px;overflow-wrap:anywhere}
+.auth-card h2{margin:8px 0}.auth-card label{font-size:13px}.auth-card input{margin-top:8px}
+.profile-settings{margin-top:22px;margin-bottom:22px;border-color:var(--accent-border)}
+.profile-settings h2{margin:6px 0 8px}.profile-settings form{max-width:530px}
+.profile-preview{margin:12px 0 16px;color:var(--muted)}.profile-preview strong{color:var(--accent-strong)}
+.profile-settings .primary{margin:0}.profile-settings .notice{margin-top:14px}
+@media(max-width:640px){.auth-layout{grid-template-columns:minmax(0,1fr)}.auth-layout .auth-card{order:-1}.auth-card .auth-links{gap:7px}.auth-card .auth-links .small{font-size:12px}}
