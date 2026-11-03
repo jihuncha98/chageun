@@ -4,6 +4,7 @@ type Workspace={revision:number;data:Study};
 type Cache={base:Study;work:Study;revision:number;operation:string|null;review:boolean};
 export type View={data:Study;ready:boolean;pending:boolean;review:boolean;status:string;error:string;remote:Workspace|null;busy:boolean};
 export const initialView:View={data:emptyStudy(),ready:false,pending:false,review:false,status:'불러오는 중',error:'',remote:null,busy:false};
+const errorMessage=(error:unknown)=>error instanceof Error?error.message:'알 수 없는 저장 오류가 발생했어요.';
 export function createStudyStore(userId:string,client=supabase){
  const key=`chageun:study:v1:${userId}`;let cache:Cache|null=null;let view=initialView;let closed=false;let busy=false;const listeners=new Set<()=>void>();
  const emit=(patch:Partial<View>)=>{if(closed)return;view={...view,...patch};listeners.forEach(fn=>fn());};
@@ -28,8 +29,8 @@ export function createStudyStore(userId:string,client=supabase){
   if(!result.data.ok){emit({remote:w,status:'확인 필요 · 다른 기기의 변경 확인',review:true});return;}
   save({base:w.data,work:w.data,revision:w.revision,operation:null,review:false});emit({status:'서버 저장 완료',remote:null,error:''});
  };
- const sync=async()=>{if(busy||closed)return;busy=true;emit({busy:true});try{await locked(syncInside);}finally{busy=false;emit({busy:false});}};
- const update=async(change:(draft:Study)=>void)=>{let saved=false;if(busy||closed){emit({error:'저장 중이에요. 잠시 후 다시 눌러 주세요.'});return false;}busy=true;emit({busy:true,error:''});try{await locked(async()=>{if(!cache)throw Error('처음 한 번은 인터넷에 연결해 데이터를 불러와 주세요.');const draft=structuredClone(cache.work);change(draft);if(!cache.review&&!view.remote)validate(draft);save({...cache,work:draft,operation:uid()});saved=true;emit({status:'동기화 대기 · 이 기기에 저장'});await syncInside();});}finally{busy=false;emit({busy:false});}return saved;};
+ const sync=async()=>{if(busy||closed)return;busy=true;emit({busy:true});try{await locked(syncInside);}catch(error){emit({error:errorMessage(error),status:cache?.operation?'동기화 대기 · 이 기기에 저장':'서버 확인 실패'});}finally{busy=false;emit({busy:false});}};
+ const update=async(change:(draft:Study)=>void)=>{let saved=false;if(busy||closed){emit({error:'저장 중이에요. 잠시 후 다시 눌러 주세요.'});return false;}busy=true;emit({busy:true,error:''});try{await locked(async()=>{if(!cache)throw Error('처음 한 번은 인터넷에 연결해 데이터를 불러와 주세요.');const draft=structuredClone(cache.work);change(draft);if(!cache.review&&!view.remote)validate(draft);save({...cache,work:draft,operation:uid()});saved=true;emit({status:'동기화 대기 · 이 기기에 저장'});await syncInside();});}catch(error){emit({error:errorMessage(error),status:cache?.operation?'동기화 대기 · 이 기기에 저장':view.status});}finally{busy=false;emit({busy:false});}return saved;};
  const resolve=async(choices:Record<string,'local'|'remote'>)=>{await locked(async()=>{if(!cache||!view.remote)return;const remote=view.remote;const m=mergeStudy(cache.base,cache.work,remote.data,choices);if(m.conflicts.length)throw Error('모든 충돌 항목을 선택해 주세요.');save({base:remote.data,work:m.result,revision:remote.revision,operation:uid(),review:true});emit({remote:null,error:'',status:'합친 기록을 확인하는 중'});await syncInside();});};
  let channel:ReturnType<NonNullable<typeof supabase>['channel']>|null=null;let timer:ReturnType<typeof setInterval>|null=null;
  const onStorage=(e:StorageEvent)=>{if(e.key===key){try{cache=read();if(cache)emit({data:cache.work,pending:!!cache.operation,review:cache.review});}catch{emit({error:'다른 탭의 저장 상태를 읽지 못했어요.'});}}};
