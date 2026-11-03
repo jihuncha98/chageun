@@ -8,7 +8,7 @@ await db.exec(`create role anon;create role authenticated;create schema auth;cre
 const sql=await readFile(new URL('../supabase/migrations/001_study_workspace.sql',import.meta.url),'utf8');
 await db.exec(sql);await db.exec(sql);
 const login=async(n:number)=>db.exec(`reset role;set role authenticated;set request.jwt.claim.sub='00000000-0000-0000-0000-${String(n).padStart(12,'0')}';`);
-const blank:import('../lib/study').Study={schema:1,subjects:[],tasks:[],entries:[],lessons:[],notes:[]};
+const blank:import('../lib/study').Study={schema:1,subjects:[],tasks:[],entries:[],lessons:[],notes:[],exams:[]};
 const op=(n:number)=>`10000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
 async function save(rev:number,n:number,data:unknown=blank){return (await db.query<{result:{ok:boolean;workspace:{revision:number}}}>('select public.save_study_workspace($1,$2,$3) as result',[rev,op(n),JSON.stringify(data)])).rows[0].result;}
 await login(1);let res=await save(0,1);assert.equal(res.ok,true);assert.equal(res.workspace.revision,1);

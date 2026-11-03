@@ -14,3 +14,14 @@ test('network failure retains pending data; another account cannot read its loca
 test('offline concurrent intervals trigger review and preserve both for correction',async()=>{saved.clear();server={revision:0,data:emptyStudy()};const a=createStudyStore('u',client);await a.sync();await a.update(add);online=false;await a.update(d=>{start(d,'t','a',1000000);stop(d,2000000);});const d=structuredClone(server.data);start(d,'t','b',1500000);stop(d,2500000);server={revision:server.revision+1,data:d};online=true;await a.sync();assert.equal(a.get().review,true);assert.equal(a.get().data.entries.length,2);assert.equal(server.data.entries.length,1);await a.update(d=>{d.entries[0].deleted_at=new Date().toISOString();});assert.equal(a.get().review,false);assert.equal(a.get().pending,false);});
 
 test('overlapping manual study time reports a validation message and preserves existing record',async()=>{saved.clear();server={revision:0,data:emptyStudy()};online=true;failRequest=false;const a=createStudyStore('u',client);await a.sync();await a.update(add);const first=await a.update(d=>{start(d,'t','pc',1000000);stop(d,1060000);});assert.equal(first,true);const before=structuredClone(a.get().data);const overlapping=await a.update(d=>{start(d,'t','pc',1030000);stop(d,1090000);});assert.equal(overlapping,false);assert.match(a.get().error,/시간이 겹쳐요/);assert.deepEqual(a.get().data,before);});
+
+
+test('older schema-1 server workspace without exams upgrades in memory and safely saves a D-day',async()=>{
+ saved.clear();online=true;failRequest=false;
+ const legacy:Omit<Study,'exams'> & {exams?:Study['exams']}=emptyStudy();delete legacy.exams;
+ server={revision:0,data:legacy as Study};
+ const store=createStudyStore('u',client);await store.sync();
+ assert.deepEqual(store.get().data.exams,[]);
+ const savedOk=await store.update(d=>d.exams.push({id:'e',name:'기말고사',date:'2026-12-15',deleted_at:null}));
+ assert.equal(savedOk,true);assert.equal(server.data.exams[0].name,'기말고사');
+});

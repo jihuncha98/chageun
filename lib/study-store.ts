@@ -1,5 +1,5 @@
 import {supabase} from './supabase';
-import {emptyStudy, mergeStudy, uid, validate, type Study} from './study';
+import {emptyStudy, mergeStudy, normalizeStudy, uid, validate, type Study} from './study';
 type Workspace={revision:number;data:Study};
 type Cache={base:Study;work:Study;revision:number;operation:string|null;review:boolean};
 export type View={data:Study;ready:boolean;pending:boolean;review:boolean;status:string;error:string;remote:Workspace|null;busy:boolean};
@@ -8,14 +8,14 @@ const errorMessage=(error:unknown)=>error instanceof Error?error.message:'알 �
 export function createStudyStore(userId:string,client=supabase){
  const key=`chageun:study:v1:${userId}`;let cache:Cache|null=null;let view=initialView;let closed=false;let busy=false;const listeners=new Set<()=>void>();
  const emit=(patch:Partial<View>)=>{if(closed)return;view={...view,...patch};listeners.forEach(fn=>fn());};
- const read=()=>{const raw=localStorage.getItem(key);if(!raw)return null;const c=JSON.parse(raw) as Cache;if(c.work?.schema!==1||!Number.isInteger(c.revision))throw Error('기기의 저장 형식을 확인할 수 없어요. 원본을 백업한 뒤 문의해 주세요.');return c;};
+ const read=()=>{const raw=localStorage.getItem(key);if(!raw)return null;const c=JSON.parse(raw) as Cache;if(c.work?.schema!==1||!Number.isInteger(c.revision))throw Error('기기의 저장 형식을 확인할 수 없어요. 원본을 백업한 뒤 문의해 주세요.');return {...c,base:normalizeStudy(c.base),work:normalizeStudy(c.work)};};
  const save=(c:Cache)=>{localStorage.setItem(key,JSON.stringify(c));cache=c;emit({data:c.work,ready:true,pending:!!c.operation,review:c.review});};
  const locked=async(fn:()=>Promise<void>)=>{if(!navigator.locks){emit({error:'이 브라우저는 안전한 기기 저장 잠금을 지원하지 않아요. 최신 Safari 또는 Chrome으로 열어 주세요.'});return;}await navigator.locks.request(key,async()=>{if(closed)return;try{cache=read()??cache;await fn();}catch(e){emit({error:e instanceof Error?e.message:'저장 공간 또는 연결을 확인해 주세요.'});}});};
  const syncInside=async()=>{
   if(!client||!navigator.onLine){emit({status:'오프라인 · 이 기기에 저장',busy:false});return;}
   const response=await client.from('study_workspaces').select('revision,data').eq('user_id',userId).maybeSingle();
   if(response.error)throw Error(`서버를 불러오지 못했어요. SQL 적용과 인터넷 연결을 확인해 주세요. (${response.error.code})`);
-  const remote:Workspace=response.data??{revision:0,data:emptyStudy()};
+  const raw:Workspace=response.data??{revision:0,data:emptyStudy()};const remote:Workspace={...raw,data:normalizeStudy(raw.data)};
   if(!cache||!cache.operation){save({base:remote.data,work:remote.data,revision:remote.revision,operation:null,review:false});emit({status:'서버 저장 완료',remote:null,error:''});return;}
   if(cache.revision!==remote.revision){
    const m=mergeStudy(cache.base,cache.work,remote.data);
@@ -25,7 +25,7 @@ export function createStudyStore(userId:string,client=supabase){
   try{validate(cache.work);}catch(e){save({...cache,review:true});emit({status:'확인 필요 · 겹친 시간을 수정해 주세요',error:(e as Error).message});return;}
   const result=await client.rpc('save_study_workspace',{expected_revision:cache.revision,operation_id:cache.operation,new_data:cache.work});
   if(result.error)throw Error(`동기화하지 못했어요. 기기 기록은 유지됩니다. ${result.error.message}`);
-  const w=result.data.workspace as Workspace;
+  const resultWorkspace=result.data.workspace as Workspace;const w:Workspace={...resultWorkspace,data:normalizeStudy(resultWorkspace.data)};
   if(!result.data.ok){emit({remote:w,status:'확인 필요 · 다른 기기의 변경 확인',review:true});return;}
   save({base:w.data,work:w.data,revision:w.revision,operation:null,review:false});emit({status:'서버 저장 완료',remote:null,error:''});
  };
