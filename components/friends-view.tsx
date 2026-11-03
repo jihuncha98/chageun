@@ -44,13 +44,15 @@ export default function FriendsView({now}:{now:number}){
  },[]);
  useEffect(()=>{
   alive.current=true;
-  void refresh();
+  // Defer the first fetch until after this effect completes. React's
+  // set-state-in-effect lint rule rejects synchronous refresh() here.
+  const initialRefresh=setTimeout(()=>{if(alive.current)void refresh();},0);
   const interval=setInterval(()=>void refresh(),45000);
   const onVisible=()=>{if(document.visibilityState==='visible')void refresh();};
   const onOnline=()=>void refresh();
   document.addEventListener('visibilitychange',onVisible);
   window.addEventListener('online',onOnline);
-  return()=>{alive.current=false;clearInterval(interval);document.removeEventListener('visibilitychange',onVisible);window.removeEventListener('online',onOnline);};
+  return()=>{alive.current=false;clearTimeout(initialRefresh);clearInterval(interval);document.removeEventListener('visibilitychange',onVisible);window.removeEventListener('online',onOnline);};
  },[refresh]);
  async function act(name:string,args:Record<string,unknown>,success:string){
   if(!supabase||busy)return;
