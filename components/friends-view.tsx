@@ -1,6 +1,8 @@
 'use client';
 import {useCallback,useEffect,useMemo,useRef,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
+import {sharedStudyTime} from '../lib/live-board-time';
+import {studyDay} from '../lib/study-day';
 import {friendLastSeen,friendTime,rankFriends,validFriendCode,type FriendBoardRow,type FriendOverview,type FriendProfile} from '../lib/friends';
 
 const message=(error:unknown)=>error instanceof Error?error.message:'연결을 확인해 주세요.';
@@ -8,6 +10,7 @@ const message=(error:unknown)=>error instanceof Error?error.message:'연결을 �
 export default function FriendsView({now}:{now:number}){
  const [overview,setOverview]=useState<FriendOverview|null>(null);
  const [board,setBoard]=useState<FriendBoardRow[]>([]);
+ const [boardReceivedAt,setBoardReceivedAt]=useState(0);
  const [nickname,setNickname]=useState('');
  const [code,setCode]=useState('');
  const [busy,setBusy]=useState(false);
@@ -37,6 +40,7 @@ export default function FriendsView({now}:{now:number}){
    const next=overviewResult.data as FriendOverview;
    setOverview(next);
    setBoard((boardResult.data??[]) as FriendBoardRow[]);
+   setBoardReceivedAt(Date.now());
    if(!initialized.current){setNickname(next.profile.nickname);initialized.current=true;}
    setError('');
   }catch(e){if(alive.current&&requestNumber===refreshSeq.current)setError(message(e));}
@@ -54,6 +58,14 @@ export default function FriendsView({now}:{now:number}){
   window.addEventListener('online',onOnline);
   return()=>{alive.current=false;clearTimeout(initialRefresh);clearInterval(interval);document.removeEventListener('visibilitychange',onVisible);window.removeEventListener('online',onOnline);};
  },[refresh]);
+ const currentStudyDay=studyDay(new Date(now));
+ const lastStudyDay=useRef(currentStudyDay);
+ useEffect(()=>{
+  if(lastStudyDay.current===currentStudyDay)return;
+  lastStudyDay.current=currentStudyDay;
+  const timer=setTimeout(()=>{if(alive.current)void refresh(true);},0);
+  return()=>clearTimeout(timer);
+ },[currentStudyDay,refresh]);
  async function act(name:string,args:Record<string,unknown>,success:string){
   if(!supabase||busy)return false;
   setBusy(true);setError('');setNotice('');
@@ -112,12 +124,12 @@ export default function FriendsView({now}:{now:number}){
     </div>}
    </section>
    <section className="card below"><div className="section-title"><h2>오늘의 친구 순공 시간</h2><span>나 + 직접 친구·그룹원</span></div>
-    <p>읽을 때마다 서버 기록에서 계산하며 약 45초마다 갱신해요. 동점은 같은 순위로 표시해요. 공부 시간은 성과를 평가하는 점수가 아니라 참고 정보예요.</p>
+    <p>읽을 때마다 서버 기록에서 계산하며 서버 기록은 약 45초마다 다시 확인하고, 공부 중인 시간은 화면에서 초 단위로 갱신해요. 동점은 같은 순위로 표시해요. 공부 시간은 성과를 평가하는 점수가 아니라 참고 정보예요.</p>
     {self&&!self.shared&&<p className="notice">공유를 끄면 친구들의 시간과 상태도 보이지 않아요.</p>}
     {ranked.map(row=><article key={row.member_id} className={`friend-rank-row ${row.is_me?'friend-self':''}`}>
      <div className="friend-rank-number">{row.rank===null?'—':`${row.rank}위`}</div>
      <div className="friend-rank-user"><strong>{row.display_name}{row.is_me?' (나)':''}</strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
-     <div className="friend-rank-time">{friendTime(row.total_ms)}</div>
+     <div className="friend-rank-time">{friendTime(sharedStudyTime(row.total_ms,row.studying,boardReceivedAt,now,typeof navigator==='undefined'||navigator.onLine))}</div>
     </article>)}
     {ranked.length===0&&<p className="empty">아직 표시할 데이터가 없어요.</p>}
    </section>

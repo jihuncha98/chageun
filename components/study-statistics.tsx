@@ -5,7 +5,7 @@ import {pageCount,pageItems,pageNumbers,RECORDS_PER_PAGE,safePage} from '../lib/
 import {studyStatistics,type StudyPoint} from '../lib/statistics';
 
 const label=(day:string)=>`${Number(day.slice(5,7))}/${Number(day.slice(8,10))}`;
-const longTime=(ms:number)=>{const minutes=Math.floor(ms/60000);return `${Math.floor(minutes/60)}시간 ${String(minutes%60).padStart(2,'0')}분`;};
+const longTime=duration;
 
 export default function StudyStatistics({data,now,review,pending,busy,onEditEntry,onStopEntry,onDeleteEntry}:{data:Study;now:number;review:boolean;pending:boolean;busy:boolean;onEditEntry:(entry:Entry)=>void;onStopEntry:(entry:Entry)=>void;onDeleteEntry:(entry:Entry)=>void}){
  const [range,setRange]=useState<7|30>(7);
@@ -43,9 +43,9 @@ export default function StudyStatistics({data,now,review,pending,busy,onEditEntr
   {!review&&<>
    <section className="card below">
     <div className="section-title"><h2>날짜별 순공 시간</h2><span className="fine">막대를 누르면 해당 날짜의 계획을 볼 수 있어요.</span></div>
-    <div className="stats-chart-scroller"><div className="stats-chart" style={{gridTemplateColumns:`repeat(${report.points.length},minmax(${range===7?54:38}px,1fr))`}}>
+    <div className="stats-chart-scroller"><div className="stats-chart" style={{gridTemplateColumns:`repeat(${report.points.length},minmax(${range===7?62:58}px,1fr))`}}>
      {report.points.map(p=><button type="button" className={`stats-day ${p.day===selectedDay?'selected':''}`} key={p.day} aria-pressed={p.day===selectedDay} aria-label={`${p.day} 순공 ${longTime(p.ms)}`} onClick={()=>setSelected(p.day)}>
-      <span className="stats-time-caption">{p.ms>0?duration(p.ms).slice(0,5):'0'}</span><span className="stats-bar-track"><span className="stats-bar-fill" style={{height:`${p.ms?Math.max(4,Math.round(p.ms/max*100)):0}%`}}/></span><span className="stats-date-caption">{label(p.day)}</span>
+      <span className="stats-time-caption">{duration(p.ms)}</span><span className="stats-bar-track"><span className="stats-bar-fill" style={{height:`${p.ms?Math.max(4,Math.round(p.ms/max*100)):0}%`}}/></span><span className="stats-date-caption">{label(p.day)}</span>
      </button>)}
     </div></div>
    </section>

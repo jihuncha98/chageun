@@ -7,10 +7,11 @@ test('friends ranking: exact ties share position and private profiles are unrank
  assert.deepEqual(rows.map(x=>[x.member_id,x.rank]),[['b',1],['c',2],['me',2],['hidden',null]]);
  assert.equal(rows[3].total_ms,null);
 });
-test('friend time displays completed minutes, not rounded up',()=>{
- assert.equal(friendTime(59999),'0시간 00분');
- assert.equal(friendTime(3600000+30000),'1시간 00분');
- assert.equal(friendTime(7260000),'2시간 01분');
+test('friend time displays hours, minutes and completed seconds',()=>{
+ assert.equal(friendTime(0),'00:00:00');
+ assert.equal(friendTime(59999),'00:00:59');
+ assert.equal(friendTime(3600000+30000),'01:00:30');
+ assert.equal(friendTime(7260000),'02:01:00');
  assert.equal(friendTime(null),'비공개');
 });
 test('friend codes require exact 16 hexadecimal characters',()=>{

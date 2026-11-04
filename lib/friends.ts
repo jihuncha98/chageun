@@ -21,8 +21,8 @@ export function rankFriends(rows:FriendBoardRow[]):RankedFriend[]{
 }
 export function friendTime(ms:number|null):string{
  if(ms===null)return '비공개';
- const totalMinutes=Math.floor(Math.max(0,ms)/60000);
- return `${Math.floor(totalMinutes/60)}시간 ${String(totalMinutes%60).padStart(2,'0')}분`;
+ const seconds=Math.floor(Math.max(0,ms)/1000);
+ return `${String(Math.floor(seconds/3600)).padStart(2,'0')}:${String(Math.floor(seconds/60%60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
 }
 export function friendLastSeen(iso:string|null,now:number):string{
  if(!iso)return '접속 정보 없음';

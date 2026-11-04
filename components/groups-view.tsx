@@ -1,6 +1,8 @@
 'use client';
 import {useCallback,useEffect,useRef,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
+import {sharedStudyTime} from '../lib/live-board-time';
+import {studyDay} from '../lib/study-day';
 import {friendLastSeen,friendTime,validFriendCode} from '../lib/friends';
 import {clampGroupPage,GROUP_BOARD_PAGE_SIZE,groupPageCount,groupViewDescription,validGroupName,type GroupBoardRow,type GroupOverview,type StudyGroup} from '../lib/groups';
 
@@ -9,6 +11,7 @@ const initialOverview:GroupOverview={groups:[],invitations:[]};
 export default function GroupsView({now}:{now:number}){
  const [overview,setOverview]=useState<GroupOverview>(initialOverview);
  const [board,setBoard]=useState<GroupBoardRow[]>([]);
+ const [boardReceivedAt,setBoardReceivedAt]=useState(0);
  const [selectedId,setSelectedId]=useState('');
  const [page,setPage]=useState(1);
  const [memberShown,setMemberShown]=useState(20);
@@ -54,7 +57,7 @@ export default function GroupsView({now}:{now:number}){
    if(!mounted.current||req!==serial.current)return;
    setShareEnabled((init.data as {shareEnabled?:boolean}|null)?.shareEnabled!==false);
    selectedRef.current=target;pageRef.current=number;
-   setSelectedId(target);setPage(number);setOverview(next);setBoard(nextBoard);setError('');
+   setSelectedId(target);setPage(number);setOverview(next);setBoard(nextBoard);setBoardReceivedAt(Date.now());setError('');
   }catch(e){if(mounted.current&&req===serial.current)setError(`그룹 정보를 불러오지 못했어요. SQL 003 적용 여부를 확인해 주세요. (${message(e)})`);}
   finally{if(req===serial.current){fetching.current=false;if(mounted.current)setLoading(false);}}
  },[]);
@@ -68,6 +71,14 @@ export default function GroupsView({now}:{now:number}){
   document.addEventListener('visibilitychange',visible);window.addEventListener('online',online);
   return()=>{mounted.current=false;clearTimeout(first);clearInterval(timer);document.removeEventListener('visibilitychange',visible);window.removeEventListener('online',online);};
  },[refresh]);
+ const currentStudyDay=studyDay(new Date(now));
+ const lastStudyDay=useRef(currentStudyDay);
+ useEffect(()=>{
+  if(lastStudyDay.current===currentStudyDay)return;
+  lastStudyDay.current=currentStudyDay;
+  const timer=setTimeout(()=>{if(mounted.current)void refresh(true);},0);
+  return()=>clearTimeout(timer);
+ },[currentStudyDay,refresh]);
  async function act(name:string,args:Record<string,unknown>,success:string){
   if(!supabase||busy)return false;
   setBusy(true);setError('');setNotice('');
@@ -110,12 +121,12 @@ export default function GroupsView({now}:{now:number}){
   {group&&<>
    <section className="card below">
     <div className="section-title"><h2>{group.name}</h2><span>그룹원 {group.members.length}명</span></div>
-    <p>그룹의 공부 시간 순위는 한국 시간 오전 6시에 새 학습일로 시작해요. 그룹 멤버십은 자동 초기화되지 않아요.</p>
+    <p>그룹의 순공 시간은 화면에서 초 단위로 갱신하고 서버 기록은 약 45초마다 확인해요. 한국 시간 오전 6시에 새 학습일로 시작하며 그룹 멤버십은 유지돼요.</p>
     {!shareEnabled&&<p className="notice">{groupViewDescription(false)}</p>}
     <div className="group-rank-list">{board.map(row=><article key={row.member_id} className={`friend-rank-row ${row.is_me?'friend-self':''}`}>
      <div className="friend-rank-number">{row.position===null?'—':`${row.position}위`}</div>
      <div className="friend-rank-user"><strong>{row.display_name}{row.is_me?' (나)':''}</strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
-     <div className="friend-rank-time">{friendTime(row.total_ms)}</div>
+     <div className="friend-rank-time">{friendTime(sharedStudyTime(row.total_ms,row.studying,boardReceivedAt,now,typeof navigator==='undefined'||navigator.onLine))}</div>
     </article>)}{board.length===0&&<p className="empty">표시할 순위가 없어요.</p>}</div>
     {pageCount>1&&<div className="record-pagination" role="navigation" aria-label="그룹 순위 페이지">
      <button className="small" onClick={()=>changePage(1)} disabled={busy||page===1} aria-label="첫 페이지">« 처음</button>
