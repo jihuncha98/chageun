@@ -44,6 +44,36 @@ export function validate(s:Study){
  for(const l of alive(s.lessons)){if(!Number.isInteger(l.weekday)||l.weekday<0||l.weekday>6||!/^([01]\d|2[0-3]):[0-5]\d$/.test(l.start)||!/^([01]\d|2[0-3]):[0-5]\d$|^24:00$/.test(l.end)||l.start>=l.end||!l.label.trim())throw Error('시간표의 요일·시작·종료·내용을 확인해 주세요.');}
  const lessons=alive(s.lessons);for(let i=0;i<lessons.length;i++)for(let j=i+1;j<lessons.length;j++)if(lessons[i].weekday===lessons[j].weekday&&lessons[i].start<lessons[j].end&&lessons[j].start<lessons[i].end)throw Error('같은 요일의 시간표가 겹쳐요.');
 }
+/** Find previous non-deleted tasks that can be reused on the chosen study day. */
+export function reusableTasks(s:Study,day:string):Task[]{
+ dayStart(day);
+ const available=new Set(alive(s.subjects).map(x=>x.id));
+ const existing=new Set(alive(s.tasks).filter(t=>t.day===day).map(t=>`${t.subjectId}\u0000${normalize(t.title).toLocaleLowerCase()}`));
+ const seen=new Set<string>();
+ return alive(s.tasks)
+  .map((task,index)=>({task,index}))
+  .filter(({task})=>task.day<day&&available.has(task.subjectId))
+  .sort((a,b)=>b.task.day.localeCompare(a.task.day)||b.index-a.index)
+  .filter(({task})=>{
+   const key=`${task.subjectId}\u0000${normalize(task.title).toLocaleLowerCase()}`;
+   if(existing.has(key)||seen.has(key))return false;
+   seen.add(key);return true;
+  })
+  .map(({task})=>task);
+}
+/** Copy only the subject and title: never copy completion state or timer entries. */
+export function reuseTask(s:Study,sourceId:string,day:string):Task {
+ dayStart(day);
+ const template=alive(s.tasks).find(t=>t.id===sourceId);
+ if(!template)throw Error('이전 할 일을 찾을 수 없어요.');
+ const sub=alive(s.subjects).find(x=>x.id===template.subjectId);
+ if(!sub)throw Error('과목을 찾을 수 없어요.');
+ if(alive(s.tasks).some(t=>t.day===day&&t.subjectId===template.subjectId&&normalize(t.title).toLocaleLowerCase()===normalize(template.title).toLocaleLowerCase()))throw Error('이 날짜에 같은 할 일이 이미 있어요.');
+ const copy:Task={id:uid(),deleted_at:null,day,subjectId:template.subjectId,title:template.title,done:false};
+ s.tasks.push(copy);
+ if(sub.archived)sub.archived=false;
+ return copy;
+}
 export function stop(s:Study,now:number){const e=activeEntry(s);if(e){if(now<e.start)throw Error('기기 시각이 시작 시각보다 이전이에요. 시계를 확인해 주세요.');e.end=now;}}
 export function start(s:Study,taskId:string|null,device:string,now:number,napMinutes=20){stop(s,now);if(taskId){const t=s.tasks.find(t=>t.id===taskId&&!t.deleted_at);if(!t||t.done)throw Error('진행 가능한 할 일을 선택해 주세요.');}s.entries.push({id:uid(),deleted_at:null,taskId,kind:taskId?'study':'nap',start:now,end:null,confirmed:now,device,napMinutes});}
 export function cutEntry(s:Study,id:string,from:number,to:number){const e=s.entries.find(e=>e.id===id&&!e.deleted_at);if(!e||e.end===null)throw Error('먼저 타이머를 정지해 주세요.');if(from===Math.floor(e.start/1000)*1000)from=e.start;if(to===Math.floor(e.end/1000)*1000)to=e.end;if(!Number.isFinite(from)||!Number.isFinite(to)||from<e.start||to>e.end||from>=to)throw Error('기록 안에서 뺄 시간 구간을 지정해 주세요.');const end=e.end;if(from===e.start&&to===end)e.deleted_at=new Date().toISOString();else if(from===e.start)e.start=to;else{e.end=from;if(to<end)s.entries.push({...e,id:uid(),start:to,end});}}

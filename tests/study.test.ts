@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {emptyStudy,start,stop,validate,total,dayStart,cutEntry,mergeStudy,nextDay,scheduleNow,subjectKey,type Study,type Entry} from '../lib/study';
+import {emptyStudy,start,stop,validate,total,dayStart,cutEntry,mergeStudy,nextDay,reusableTasks,reuseTask,scheduleNow,subjectKey,type Study,type Entry} from '../lib/study';
 function fixture():Study{const s=emptyStudy();s.subjects.push({id:'math',name:'수학',archived:false,deleted_at:null});s.tasks.push({id:'a',day:'2026-01-01',subjectId:'math',title:'오답',done:false,deleted_at:null},{id:'b',day:'2026-01-01',subjectId:'math',title:'문제',done:false,deleted_at:null});return s;}
 const at=(h:number,m=0)=>dayStart('2026-01-01')+(h-6)*3600000+m*60000;
 const entry=(id:string,start:number,end:number|null):Entry=>({id,taskId:'a',kind:'study',start,end,confirmed:start,device:'pc',deleted_at:null,napMinutes:20});
@@ -17,3 +17,41 @@ test('schedule uses actual Korean weekday and end-exclusive boundary',()=>{const
 test('normalized subject duplicate prevented; adjacent schedule allowed',()=>{const s=fixture();assert.equal(subjectKey(' 수 학 '),subjectKey('수학'));s.subjects.push({...s.subjects[0],id:'other',name:'수 학'});assert.throws(()=>validate(s));});
 
 test('second-precision editor can exclude a complete timer with fractional seconds',()=>{const s=emptyStudy();s.subjects.push({id:'s',name:'수학',archived:false,deleted_at:null});s.tasks.push({id:'t',day:'2026-01-01',title:'공부',subjectId:'s',done:false,deleted_at:null});start(s,'t','pc',1001);stop(s,2999);cutEntry(s,s.entries[0].id,1000,2000);assert.ok(s.entries[0].deleted_at);});
+
+test('previous tasks can be reused in one click with a fresh identity, no completion or timer history',()=>{
+ const s=fixture();s.tasks[0].done=true;
+ start(s,'b','pc',at(8));stop(s,at(9));
+ const previous=structuredClone(s.tasks[0]);
+ const copied=reuseTask(s,'a','2026-01-02');
+ assert.notEqual(copied.id,previous.id);
+ assert.equal(copied.day,'2026-01-02');
+ assert.equal(copied.subjectId,previous.subjectId);
+ assert.equal(copied.title,previous.title);
+ assert.equal(copied.done,false);
+ assert.equal(s.entries.length,1);
+ assert.equal(s.tasks[0].done,true);
+ assert.equal(total(s,'2026-01-02',at(9),copied.id),0);
+ validate(s);
+});
+test('previous templates appear once, newest first, and already scheduled or deleted tasks are skipped',()=>{
+ const s=fixture();
+ s.tasks[0].title='반복 학습';
+ s.tasks[1].title='반복 학습';
+ s.tasks.push({id:'old-deleted',day:'2026-01-01',subjectId:'math',title:'삭제한 기록',done:false,deleted_at:'2026-01-02T00:00:00Z'});
+ s.tasks.push({id:'other',day:'2026-01-02',subjectId:'math',title:'매일 복습',done:false,deleted_at:null});
+ assert.deepEqual(reusableTasks(s,'2026-01-03').map(t=>t.title),['매일 복습','반복 학습']);
+ reuseTask(s,'other','2026-01-03');
+ assert.deepEqual(reusableTasks(s,'2026-01-03').map(t=>t.title),['반복 학습']);
+ assert.throws(()=>reuseTask(s,'other','2026-01-03'),/같은 할 일/);
+});
+test('stop never marks a task complete; a stopped task can be restarted immediately',()=>{
+ const s=fixture();
+ start(s,'a','pc',at(8));stop(s,at(8,5));
+ assert.equal(s.tasks[0].done,false);
+ assert.equal(s.entries[0].end,at(8,5));
+ start(s,'a','pc',at(8,10));
+ stop(s,at(8,15));
+ assert.equal(s.tasks[0].done,false);
+ assert.equal(total(s,'2026-01-01',at(8,15),'a'),600000);
+ validate(s);
+});
