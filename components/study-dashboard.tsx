@@ -38,6 +38,20 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,...appearanc
  const subject=(id:string)=>s.subjects.find(x=>x.id===id)?.name??'과목';
  const taskLabel=(id:string|null)=>id?s.tasks.find(x=>x.id===id)?.title??'보관된 할 일':'쪽잠';
  const write=(fn:(d:Study)=>void)=>{setUiError('');return store.update(fn);};
+ // A file may take a moment to parse; a background sync can begin before the import finishes.
+ // Wait for that sync to finish instead of rejecting the user's one-time file selection.
+ const importWrite=async(fn:(d:Study)=>void):Promise<boolean>=>{
+  for(let attempt=0;attempt<2;attempt++){
+   const deadline=Date.now()+12000;
+   while(store.get().busy&&Date.now()<deadline){await new Promise<void>(resolve=>setTimeout(resolve,150));}
+   if(store.get().busy){setUiError('서버 동기화가 오래 걸리고 있어요. 상단의 저장 상태를 확인해 주세요.');return false;}
+   const saved=await write(fn);
+   if(saved)return true;
+   // Retry only a concurrent-sync race, not validation errors or storage failures.
+   if(!store.get().error.includes('저장 중이에요'))return false;
+  }
+  return false;
+ };
  function showEntryEditor(entry:Entry|null){setEditorTab(tab);setEntryError('');setEntryEdit(entry);setManual(!entry);window.setTimeout(()=>{const editor=document.getElementById('record-editor');editor?.scrollIntoView({behavior:'smooth',block:'start'});const first=editor?.querySelector('select,input') as HTMLElement|null;first?.focus({preventScroll:true});},0);}
  function begin(taskId:string|null,minutes=20){if(!device)return;if(v.review||v.remote){setUiError('먼저 충돌한 기록을 확인해 주세요.');return;}if(active?.device!==device&&active&&!confirm('다른 기기에서 실행한 타이머를 정지하고 전환할까요?'))return;write(d=>start(d,taskId,device,Date.now(),minutes));}
  function mutateTask(t:Task,action:'done'|'delete'|'defer'){if(active?.taskId===t.id&&!confirm('실행 중인 타이머를 정지하고 처리할까요?'))return;write(d=>{if(activeEntry(d)?.taskId===t.id)stop(d,Date.now());const x=d.tasks.find(x=>x.id===t.id)!;if(action==='done')x.done=!x.done;else if(action==='delete')x.deleted_at=new Date().toISOString();else x.day=nextDay(x.day);});}
@@ -69,11 +83,11 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,...appearanc
 
  {recordEditor}
  <section className="card below"><h2>오늘 학교 시간표</h2><p>수업 안내이며 순공 시간으로 자동 합산되지 않아요.</p><div className="school-list">{scheduled.list.map(l=><div key={l.id} className={l.id===scheduled.current?.id?'current':''}><time>{l.start}–{l.end}</time><strong>{l.label}</strong><span>{l.room}</span></div>)}</div></section>
- </>:tab==='시험 대비'?<ExamPlanning data={s} write={write} busy={v.busy} now={now}/>:tab==='통계'?<><StudyStatistics data={s} now={now} review={v.review||!!v.remote} pending={v.pending} busy={v.busy} onEditEntry={showEntryEditor} onStopEntry={e=>void write(d=>{const x=d.entries.find(x=>x.id===e.id);if(x&&x.end===null)x.end=Date.now();})} onDeleteEntry={e=>{if(confirm('이 기록을 휴지통으로 옮길까요? 순공 시간에서 제외됩니다.'))void write(d=>{const x=d.entries.find(x=>x.id===e.id);if(x){x.end=x.end??Date.now();x.deleted_at=new Date().toISOString();}});}}/>{recordEditor}</>:tab==='설정'?<><ProfileSettings key={profileUser.id} user={profileUser} onSaved={onProfileSaved}/><Settings data={s} write={write} busy={v.busy} onBackup={()=>download(`chageun-backup-${new Date(now+9*3600000).toISOString().slice(0,10)}.json`,{format:'chageun-data-export-v1',exportedAt:new Date(now).toISOString(),syncStatus:v.status,data:store.getLocal()?.work??s})} {...appearanceControls}/></>:tab==='친구'?<FriendsView now={now}/>:tab==='그룹'?<GroupsView now={now}/>:<section className="card"><h2>메뉴를 찾을 수 없어요</h2><p>다른 메뉴를 선택해 주세요.</p></section>}
+ </>:tab==='시험 대비'?<ExamPlanning data={s} write={write} busy={v.busy} now={now}/>:tab==='통계'?<><StudyStatistics data={s} now={now} review={v.review||!!v.remote} pending={v.pending} busy={v.busy} onEditEntry={showEntryEditor} onStopEntry={e=>void write(d=>{const x=d.entries.find(x=>x.id===e.id);if(x&&x.end===null)x.end=Date.now();})} onDeleteEntry={e=>{if(confirm('이 기록을 휴지통으로 옮길까요? 순공 시간에서 제외됩니다.'))void write(d=>{const x=d.entries.find(x=>x.id===e.id);if(x){x.end=x.end??Date.now();x.deleted_at=new Date().toISOString();}});}}/>{recordEditor}</>:tab==='설정'?<><ProfileSettings key={profileUser.id} user={profileUser} onSaved={onProfileSaved}/><Settings data={s} write={write} importWrite={importWrite} getSaveError={()=>store.get().error||store.get().status} busy={v.busy} onBackup={()=>download(`chageun-backup-${new Date(now+9*3600000).toISOString().slice(0,10)}.json`,{format:'chageun-data-export-v1',exportedAt:new Date(now).toISOString(),syncStatus:v.status,data:store.getLocal()?.work??s})} {...appearanceControls}/></>:tab==='친구'?<FriendsView now={now}/>:tab==='그룹'?<GroupsView now={now}/>:<section className="card"><h2>메뉴를 찾을 수 없어요</h2><p>다른 메뉴를 선택해 주세요.</p></section>}
  </div>
  </>;
 }
-function Settings({data:s,write,busy,onBackup,appearance,onAppearanceTheme,onAppearanceAccent,onAppearanceFont}:{data:Study;write:(f:(d:Study)=>void)=>Promise<boolean>;busy:boolean;onBackup:()=>void}&AppearanceControls){
+function Settings({data:s,write,importWrite,getSaveError,busy,onBackup,appearance,onAppearanceTheme,onAppearanceAccent,onAppearanceFont}:{data:Study;write:(f:(d:Study)=>void)=>Promise<boolean>;importWrite:(f:(d:Study)=>void)=>Promise<boolean>;getSaveError:()=>string;busy:boolean;onBackup:()=>void}&AppearanceControls){
  const [weekday,setWeekday]=useState(1);const [editing,setEditing]=useState<Lesson|null>(null);const [error,setError]=useState('');const [importNotice,setImportNotice]=useState('');
  const lessons=alive(s.lessons).filter(l=>l.weekday===weekday).sort((a,b)=>a.start.localeCompare(b.start));
  const accents:[Accent,string][]=[['blue','차근 블루'],['violet','라벤더'],['mint','민트'],['coral','코랄']];
@@ -103,8 +117,8 @@ function Settings({data:s,write,busy,onBackup,appearance,onAppearanceTheme,onApp
     }
     if(!additions.length){setWeekday(incoming[0].weekday);setImportNotice(`이미 ${duplicates}개 일정이 등록돼 있어요. 요일별 시간표를 확인해 주세요.`);return;}
     if(!confirm(`${additions.length}개 일정을 내 계정에 추가할까요?${duplicates?` (기존 중복 ${duplicates}개 제외)`:''}`))return;
-    const saved=await write(d=>{for(const l of additions)d.lessons.push({id:uid(),deleted_at:null,...l});});
-    if(!saved){setError('시간표가 추가되지 않았어요. 화면 상단의 저장 상태와 오류를 확인하고 잠시 후 다시 시도해 주세요.');return;}
+    const saved=await importWrite(d=>{for(const l of additions)d.lessons.push({id:uid(),deleted_at:null,...l});});
+    if(!saved){const reason=getSaveError();setError(`시간표를 저장하지 못했어요. 원인: ${reason||'알 수 없는 저장 오류'}. 이 문구를 알려주면 다음 원인을 확인할 수 있어요.`);return;}
     setWeekday(additions[0].weekday);
     setImportNotice(`${additions.length}개 일정을 추가했어요.${duplicates?` 기존 일정 ${duplicates}개는 중복 등록하지 않았어요.`:''} 위쪽에서 서버 저장 상태를 확인해 주세요.`);
    }catch(err){setError(err instanceof Error?err.message:'파일을 읽거나 시간표를 추가하지 못했어요.');}
