@@ -7,8 +7,8 @@ import StudyDashboard from '../components/study-dashboard';
 import {readAppearance,appearanceStorageKeys,type Accent,type FontChoice} from '../lib/appearance';
 import {authErrorMessage,authReturnUrl,brandSubtitle} from '../lib/auth-ui';
 
-const tabs=['오늘','시험 대비','통계','친구','설정'];
-const tabIcons=['◷','▦','▥','♧','⚙'];
+const tabs=['오늘','시험 대비','통계','친구','그룹','설정'];
+const tabIcons=['◷','▦','▥','♧','◎','⚙'];
 type AuthMode='login'|'signup'|'forgot'|'recovery';
 function PasswordFields({confirmation=false,autoComplete='new-password'}:{confirmation?:boolean;autoComplete?:string}) {
  return <><label>비밀번호<input name="password" type="password" autoComplete={autoComplete} minLength={8} maxLength={128} required placeholder="8자 이상"/></label>{confirmation&&<label>비밀번호 확인<input name="password_confirm" type="password" autoComplete="new-password" minLength={8} maxLength={128} required placeholder="같은 비밀번호를 다시 입력"/></label>}</>;

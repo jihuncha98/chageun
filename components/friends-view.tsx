@@ -91,7 +91,7 @@ export default function FriendsView({now}:{now:number}){
  return <div className="friends-view">
   <section className="card">
    <div className="section-title"><h2>친구와 공부하기</h2><button className="small" onClick={()=>void refresh()} disabled={busy||loading}>새로고침</button></div>
-   <p>친구 요청을 서로 승인한 사람끼리만 오늘 공부 시간을 확인할 수 있어요. 모든 기록은 한국 시간 오전 6시에 새 학습일로 넘어가요.</p>
+   <p>직접 친구 요청을 수락했거나 같은 그룹의 초대를 수락한 사람끼리 오늘 공부 시간을 확인할 수 있어요. 학습일은 오전 6시에 새로 시작해요.</p>
    {typeof navigator!=='undefined'&&!navigator.onLine&&<p className="notice">오프라인이에요. 인터넷을 연결하면 친구 상태를 새로 확인할 수 있어요.</p>}
    {loading&&<p role="status">친구 공간을 불러오는 중…</p>}
    {error&&<p role="alert" className="notice error">{error}</p>}
@@ -101,7 +101,7 @@ export default function FriendsView({now}:{now:number}){
      <div className="friend-code-panel"><span className="eyebrow">MY FRIEND CODE</span><strong>{profile.code}</strong><button className="small" onClick={async()=>{try{await navigator.clipboard.writeText(profile.code);setNotice('친구 코드를 복사했어요.');}catch{setNotice('코드를 길게 눌러 직접 복사해 주세요.');}}}>코드 복사</button><p>이 코드로 친구 요청을 받을 수 있어요. 이메일은 공개되지 않아요.</p></div>
      <form onSubmit={saveProfile}><label>내 별명<input value={nickname} onChange={e=>setNickname(e.target.value)} maxLength={20} minLength={2} required placeholder="친구에게 보일 별명"/></label><button className="small blue" disabled={busy}>별명 저장</button></form>
     </div>
-    <div className="friend-share-strip"><div><strong>오늘 공부 시간 공유</strong><p>{profile.shareEnabled?'승인한 친구에게만 오늘 순공 시간·공부 중 여부·최근 접속이 보여요.':'내 공부 시간과 상태를 친구에게 공개하지 않아요. 이때 나도 친구의 시간을 볼 수 없어요.'}</p></div><button className="small" disabled={busy} onClick={()=>void share(!profile.shareEnabled)}>{profile.shareEnabled?'공유 끄기':'공유 켜기'}</button></div>
+    <div className="friend-share-strip"><div><strong>오늘 공부 시간 공유</strong><p>{profile.shareEnabled?'직접 친구 또는 같은 그룹원에게 오늘 순공 시간·공부 상태·최근 접속이 보여요.':'내 공부 시간과 상태를 친구에게 공개하지 않아요. 이때 나도 친구의 시간을 볼 수 없어요.'}</p></div><button className="small" disabled={busy} onClick={()=>void share(!profile.shareEnabled)}>{profile.shareEnabled?'공유 끄기':'공유 켜기'}</button></div>
    </>}
   </section>
   {profile&&<>
@@ -111,7 +111,7 @@ export default function FriendsView({now}:{now:number}){
       {outgoing.length>0&&<><h3>보낸 요청 · {outgoing.length}</h3>{outgoing.map(c=><div className="record-row" key={c.id}><div><strong>{c.nickname}</strong><p>상대방 수락 대기 중</p></div><button className="small" disabled={busy} onClick={()=>void act('friend_disconnect',{p_other:c.id},'친구 요청을 취소했어요.')}>요청 취소</button></div>)}</>}
     </div>}
    </section>
-   <section className="card below"><div className="section-title"><h2>오늘의 친구 순공 시간</h2><span>나 + 승인한 친구 · {connected.length}명</span></div>
+   <section className="card below"><div className="section-title"><h2>오늘의 친구 순공 시간</h2><span>나 + 직접 친구·그룹원</span></div>
     <p>읽을 때마다 서버 기록에서 계산하며 약 45초마다 갱신해요. 동점은 같은 순위로 표시해요. 공부 시간은 성과를 평가하는 점수가 아니라 참고 정보예요.</p>
     {self&&!self.shared&&<p className="notice">공유를 끄면 친구들의 시간과 상태도 보이지 않아요.</p>}
     {ranked.map(row=><article key={row.member_id} className={`friend-rank-row ${row.is_me?'friend-self':''}`}>
@@ -121,7 +121,7 @@ export default function FriendsView({now}:{now:number}){
     </article>)}
     {ranked.length===0&&<p className="empty">아직 표시할 데이터가 없어요.</p>}
    </section>
-   <section className="card below"><h2>내 친구</h2>{connected.length===0?<p>아직 친구가 없어요. 코드를 공유하고 요청을 수락하면 여기에 나타나요.</p>:connected.map(c=><div className="record-row" key={c.id}><strong>{c.nickname}</strong><button className="small" disabled={busy} onClick={()=>{if(confirm(`${c.nickname}님을 친구 목록에서 삭제할까요? 이후 서로 공부 시간이 보이지 않아요.`))void act('friend_disconnect',{p_other:c.id},'친구 관계를 삭제했어요.');}}>친구 삭제</button></div>)}<p className="fine">친구에게는 내 할 일 내용, 시간표, 이전 날짜 공부 기록, 사진, 이메일을 보여주지 않아요.</p></section>
+   <section className="card below"><h2>내 친구</h2>{connected.length===0?<p>아직 친구가 없어요. 코드를 공유하고 요청을 수락하면 여기에 나타나요.</p>:connected.map(c=><div className="record-row" key={c.id}><strong>{c.nickname}</strong><button className="small" disabled={busy} onClick={()=>{if(confirm(`${c.nickname}님을 친구 목록에서 삭제할까요? 이후 서로 공부 시간이 보이지 않아요.`))void act('friend_disconnect',{p_other:c.id},'친구 관계를 삭제했어요.');}}>친구 삭제</button></div>)}<p className="fine">직접 친구 관계만 여기에서 삭제할 수 있어요. 그룹원은 그룹 메뉴에서 관리해요. 할 일·시간표·과거 기록·이메일은 공유하지 않아요.</p></section>
   </>}
  </div>;
 }
