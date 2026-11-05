@@ -12,7 +12,8 @@ test('statistics UI reads the permanent rollup rather than the temporary preview
 
 test('rollup query is restricted to current user and the selected study-day window',()=>{
  assert.match(component,/\.eq\('user_id',userId\)/);
- assert.match(component,/\.gte\('study_day',rollupQueryFrom\(now\)\)/);
+ assert.match(component,/const\s+queryFrom\s*=\s*rollupQueryFrom\(now\)/);
+ assert.match(component,/\.gte\('study_day',queryFrom\)/);
  assert.match(component,/\.lte\('study_day',currentStudyDay\)/);
 });
 
