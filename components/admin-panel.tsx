@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useState} from 'react';
 import {supabase} from '../lib/supabase';
 
-type UserRow={id:string;email:string|null;nickname:string;friendCode:string|null;createdAt:string;isAdmin:boolean};
+type UserRow={id:string;email:string|null;nickname:string;displayName?:string|null;friendCode:string|null;createdAt:string;isAdmin:boolean};
 type Member={userId:string;nickname:string;joinedAt:string|null;status:'accepted'|'pending';isOwner:boolean};
 type GroupRow={id:string;name:string;ownerId:string;createdAt:string;members:Member[]};
 type Archived={id:string;name:string;deletedAt:string;expiresAt:string;memberCount:number};
@@ -10,7 +10,7 @@ type Audit={action:string;reason:string;at:string;targetUserId:string|null;targe
 type Overview={users:UserRow[];groups:GroupRow[];archivedGroups:Archived[];audit:Audit[]};
 const EMPTY:Overview={users:[],groups:[],archivedGroups:[],audit:[]};
 const koreanTime=(value:string)=>new Date(value).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
-const readable=(err:unknown)=>err instanceof Error?err.message:'서버 요청에 실패했어요.';
+const readable=(err:unknown)=>err && typeof err==='object' && 'message' in err && typeof err.message==='string'?err.message:'서버 요청에 실패했어요.';
 
 export default function AdminPanel(){
  const [data,setData]=useState<Overview>(EMPTY);
@@ -49,20 +49,29 @@ export default function AdminPanel(){
   finally{setBusy(false);}
  }
  const selectedUser=data.users.find(x=>x.id===selection);
- const filtered=data.users.filter(x=>`${x.nickname} ${x.friendCode??''} ${x.email??''}`.toLowerCase().includes(search.trim().toLowerCase()));
+ const filtered=data.users.filter(x=>`${x.nickname} ${x.displayName??''} ${x.friendCode??''} ${x.email??''}`.toLowerCase().includes(search.trim().toLowerCase()));
  return <div className="admin-panel">
   <section className="card"><p className="eyebrow">ADMINISTRATION</p><h2>차근 전체 관리자</h2>
-   <p>관리자 권한은 서버에서 확인해요. 별명은 <strong>친구 메뉴의 별명만</strong> 수정하고, 설정의 개인 이름은 변경하지 않아요.</p>
+   <p>관리자 권한은 서버에서 확인해요. 표시 이름은 로그인 후 ‘○○의 근면성실’에, 친구 별명은 친구 목록에 표시돼요.</p>
    <p className="notice">회원 계정 영구 삭제는 인증 서버와 그룹 자동 승계 검증을 완료할 때까지 비활성화했어요. 기존 계정과 공부 기록은 이번 업데이트에서 삭제되지 않아요.</p>
    <div className="admin-tabs">{([['users','회원 관리'],['groups','그룹 관리'],['archived','삭제된 그룹'],['history','관리 기록']] as const).map(([key,name])=><button className="small" aria-pressed={section===key} key={key} onClick={()=>setSection(key)}>{name}</button>)}</div>
    {error&&<p role="alert" className="notice error">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}
    {loading?<p>관리자 정보를 불러오는 중…</p>:<>
     {section!=='history'&&<label>관리자 조치 사유 (필수)<input value={reason} maxLength={150} placeholder="예: 그룹 운영 요청, 부적절한 별명 수정" onChange={e=>setReason(e.target.value)}/></label>}
     {section==='users'&&<>
-     <label>회원 검색 (별명·이메일·친구 코드)<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="검색어 입력"/></label>
+     <label>회원 검색 (표시 이름·별명·이메일·친구 코드)<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="검색어 입력"/></label>
      <div className="admin-list">{filtered.map(user=><div className="admin-item" key={user.id}>
-      <div className="admin-item-details"><strong>{user.nickname}</strong>{user.isAdmin&&<span className="admin-status">전체 관리자</span>}<p>{user.email??'이메일 확인 불가'}</p><small>친구 코드 {user.friendCode??'미설정'}</small></div>
+      <div className="admin-item-details"><strong>{user.nickname}</strong>{user.isAdmin&&<span className="admin-status">전체 관리자</span>}<p>{user.email??'이메일 확인 불가'}</p><small>표시 이름 {user.displayName||'미설정'} · 친구 코드 {user.friendCode??'미설정'}</small></div>
       {!user.isAdmin&&<div className="admin-actions">
+       <button className="small" disabled={busy || user.displayName===undefined} onClick={()=>{
+        const value=window.prompt(`${user.email??user.nickname}님의 새 표시 이름을 입력해 주세요. (1~24자)`,user.displayName??'');
+        if(value===null)return;
+        const name=value.trim().replace(/\s+/g,' ');
+        if(!name || name.length>24){setError('표시 이름은 1~24자로 입력해 주세요.');return;}
+        if(window.confirm(`이 회원의 표시 이름을 「${name}」(으)로 변경할까요?`)){
+         void act('chageun_admin_set_display_name',{p_user:user.id,p_name:name,p_expected:user.displayName},'표시 이름을 수정했어요.');
+        }
+       }}>표시 이름 수정</button>
        <button className="small" disabled={busy} onClick={()=>{const value=window.prompt(`${user.nickname}님의 새 친구 별명을 입력해 주세요.`,user.nickname);if(value!==null&&window.confirm(`정말 ${user.nickname}님의 친구 별명을 「${value}」(으)로 변경할까요?`))void act('chageun_admin_set_nickname',{p_user:user.id,p_nickname:value},'친구 별명을 수정했어요.');}}>별명 수정</button>
        <button className="small" disabled={busy} onClick={()=>setSelection(selection===user.id?'':user.id)}>채팅 제한</button>
        <button className="small" disabled aria-label="회원 영구 삭제는 아직 사용할 수 없습니다">회원 삭제 (준비 중)</button>
