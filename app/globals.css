@@ -254,3 +254,209 @@ button.small{padding:9px 12px;border:1px solid var(--line);border-radius:9px;bac
 .admin-name-editor h3,.admin-name-editor p{margin:0}
 .admin-name-editor label{display:grid;gap:6px;min-width:0}
 .admin-name-editor input{width:100%;min-width:0}
+
+/* ================================================================
+   CHAGEUN / TODAY — light, airy dashboard refresh
+   Visual-only layer. No timer, sync, auth or database changes.
+   ================================================================ */
+.app{--bg:#f5f8fe;--panel:#ffffff;--text:#182943;--muted:#75839b;--line:#e6ecf5;background:var(--bg);font-family:Inter,Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;letter-spacing:-.025em}
+.app.dark{--bg:#101a2c;--panel:#19263a;--text:#eef4ff;--muted:#a6b7d0;--line:#30435d}
+.app aside{background:var(--panel);box-shadow:8px 0 30px #213a6710;border-right:1px solid var(--line);padding:28px 20px 24px;display:flex;flex-direction:column;z-index:8}
+.app .brand{margin:0 12px 39px;letter-spacing:-2.5px;font-size:38px;font-weight:850;color:#2768d7;line-height:1.25}
+.app .brand span{letter-spacing:0;font-weight:500;font-size:11px;margin-top:10px;color:var(--muted)}
+.app nav{gap:7px}
+.app nav button{font-size:14px;font-weight:550;padding:13px 14px;min-height:48px;display:flex;align-items:center;gap:12px;border-radius:14px;color:var(--muted);transition:background-color .16s,color .16s,transform .16s}
+.app nav button>span:first-child{width:24px;flex:0 0 24px;font-size:18px;text-align:center;line-height:1}
+.app nav button:hover{background:#edf3fd;color:#285bc1}
+.app nav button[aria-current]{background:linear-gradient(115deg,#e9f1ff,#dfeaff);color:#255bc2;box-shadow:inset 0 0 0 1px #e5eeff;font-weight:750}
+.app.dark nav button:hover{background:#223753;color:#b5d2ff}
+.app.dark nav button[aria-current]{background:linear-gradient(115deg,#233e65,#2b4c75);color:#d2e3ff;box-shadow:inset 0 0 0 1px #3a5776}
+.app .aside-bottom{margin-top:auto!important;padding:28px 13px 0;border-top:1px solid var(--line);font-size:11px;line-height:1.8}
+.app main{max-width:none;min-height:100vh;padding:25px clamp(24px,3vw,54px) 26px;margin-left:230px}
+.app main>header{border:0;padding:0 0 16px;font-size:11px;letter-spacing:.12em;font-weight:750;color:#7c93bc}
+.app .header-separator{color:#b4c4dd;margin:0 8px}
+.app .quiet{border:1px solid var(--line);border-radius:12px;padding:10px 17px;font-size:12px;letter-spacing:0;box-shadow:0 2px 8px #192e4e08}
+.app .heading{margin:13px 0 13px;min-height:64px}
+.app .heading h1{font-size:clamp(27px,2.7vw,35px);font-weight:820;letter-spacing:-1.6px;margin:6px 0 0}
+.app .heading .eyebrow{color:#7792c8;font-size:10px;letter-spacing:.2em}
+.app .heading>span.badge{font-size:12px;font-weight:600;color:#4566a3;background:#edf3ff;border-color:#e0eafe;padding:10px 15px;letter-spacing:0}
+.app.dark .heading>span.badge{background:#263d60;color:#b9d2ff;border-color:#34537a}
+.app .account-strip{font-size:11px;margin:0 0 14px;color:var(--muted);justify-content:flex-end;gap:10px}
+.app .account-strip .small{padding:6px 11px;min-height:30px;font-size:11px}
+.app .card{border-radius:22px;border:1px solid var(--line);box-shadow:0 10px 28px #2a48700a;background:var(--panel)}
+.app .small{border-radius:11px}
+.app input,.app textarea,.app select{border-radius:11px;transition:border-color .16s,box-shadow .16s}
+.app input:focus-visible,.app textarea:focus-visible,.app select:focus-visible{border-color:#7fa4f0;box-shadow:0 0 0 3px #4e83dc1a;outline:0}
+.app button{transition:transform .12s,background-color .14s,border-color .14s,box-shadow .14s}
+.app button:active:not(:disabled){transform:translateY(1px)}
+.app button.primary{background:#346ce1;border-radius:11px;box-shadow:0 4px 10px #346ce126}
+.app button.primary:hover:not(:disabled){background:#265ccb;box-shadow:0 7px 14px #346ce12a}
+
+/* Today: compact controls and useful information first */
+.chageun-today{display:block;animation:today-appear .3s ease-out}
+@keyframes today-appear{from{opacity:.3;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.chageun-today .exam-today-banner{margin:0 0 19px;border:1px solid #dde9ff;border-radius:19px;padding:21px 25px;display:flex;align-items:center;justify-content:space-between;gap:16px;background:linear-gradient(115deg,#fff 42%,#f0f5ff 100%);box-shadow:0 8px 22px #3558a50a;min-height:101px}
+.chageun-today .exam-today-banner::before{content:'▣';display:grid;place-items:center;flex:0 0 41px;width:41px;height:41px;border-radius:12px;background:#eaf2ff;color:#346bd1;font-size:22px}
+.chageun-today .exam-today-banner>div{flex:1;min-width:0}
+.chageun-today .exam-today-banner .eyebrow{letter-spacing:.14em;color:#718fc5;font-size:10px}
+.chageun-today .exam-today-banner h2{font-size:17px;font-weight:750;margin:4px 0 0;overflow-wrap:anywhere}
+.chageun-today .exam-today-banner p{margin:3px 0 0;font-size:11px;line-height:1.4}
+.chageun-today .exam-countdown{font-size:26px;letter-spacing:-.8px;color:#275cc8;border-radius:12px;background:#e6efff;padding:11px 15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.chageun-today .today-controls{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 17px}
+.chageun-today .daybar{margin:0;gap:10px}
+.chageun-today .daybar label{margin:0;font-size:11px;color:var(--muted)}
+.chageun-today .daybar input{min-height:37px;padding:8px 12px;background:var(--panel);border:1px solid var(--line);font-size:12px;margin:5px 0 0;max-width:192px}
+.chageun-today .daybar .small{align-self:flex-end;min-height:37px;padding:8px 15px;background:#e9f1ff;color:#255dc3;border:1px solid #dce9ff}
+.chageun-today .daybar-range{align-self:flex-end;margin-bottom:11px;font-size:11px;color:var(--muted)}
+.chageun-today .live-clock{margin:0;padding:8px 15px;min-width:170px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;border-radius:15px;background:var(--panel);border:1px solid var(--line);box-shadow:0 6px 20px #21467308}
+.chageun-today .live-clock .eyebrow{font-size:9px;letter-spacing:.05em;line-height:1.3}
+.chageun-today .live-clock strong{font-size:21px;font-weight:800;line-height:1.25;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.chageun-today .live-clock small{color:var(--muted);font-size:10px}
+.chageun-today .today-top{display:grid;grid-template-columns:1.2fr .8fr 1fr;gap:15px;margin-bottom:17px}
+.chageun-today .today-top>*{min-width:0;min-height:155px;padding:24px;border-radius:20px;position:relative;overflow:hidden}
+.chageun-today .summary-card{background:linear-gradient(125deg,#336dda 0%,#548df0 100%);box-shadow:0 14px 26px #3a74d725;border:0}
+.chageun-today .summary-card:after{content:'';position:absolute;right:-46px;top:-56px;width:220px;height:220px;border-radius:50%;border:35px solid #ffffff12;pointer-events:none}
+.chageun-today .summary-card p{font-size:12px;font-weight:700;color:#f1f6ff;margin:3px 0 13px}
+.chageun-today .summary-card strong{position:relative;z-index:1;display:block;font-size:clamp(25px,2.65vw,36px);font-weight:850;line-height:1.1;letter-spacing:-.7px;font-variant-numeric:tabular-nums}
+.chageun-today .summary-card small{display:block;margin-top:12px;font-size:11px;color:#deebff}
+.chageun-today .summary-icon{display:grid;place-items:center;width:29px;height:29px;border-radius:9px;background:#ffffff2b;color:white;font-size:18px;position:absolute;right:17px;top:16px}
+.chageun-today .complete-card{display:flex;flex-direction:column;background:linear-gradient(145deg,#f7fbff,#edf5ff)}
+.chageun-today .complete-card .summary-icon{color:#2c6bc7;background:#dfecff}
+.chageun-today .complete-card p{margin:3px 0 13px;color:#526c99;font-size:12px;font-weight:750}
+.chageun-today .complete-card strong{font-size:clamp(30px,3vw,38px);color:#2353a1;line-height:1.15;font-weight:850;font-variant-numeric:tabular-nums}
+.chageun-today .complete-card strong small{font-size:17px;color:#8da1c5;font-weight:500}
+.chageun-today .progress-track{display:block;overflow:hidden;height:7px;margin-top:auto;border-radius:20px;background:#d6e5fb}
+.chageun-today .progress-track>span{display:block;height:100%;border-radius:20px;background:linear-gradient(90deg,#2e68d7,#6b9bf3);transition:width .25s}
+.chageun-today .current-class{background:linear-gradient(145deg,#fff,#f9fcff);padding:24px;border-color:#e4ecf7}
+.chageun-today .current-class .eyebrow{font-size:11px;letter-spacing:0;color:#6884b5;font-weight:750;margin:3px 0 11px}
+.chageun-today .current-class h2{font-size:18px;font-weight:800;line-height:1.45;min-height:25px;margin:0 0 6px}
+.chageun-today .current-class p{font-size:11px;line-height:1.5;margin:0 0 4px}
+.chageun-today .running{border:1px solid #d9e8ff;background:linear-gradient(100deg,#f6faff,#eaf3ff);padding:19px 23px;border-radius:18px;margin-bottom:17px;box-shadow:none}
+.chageun-today .running .eyebrow{font-size:10px;color:#6587be;margin:0}
+.chageun-today .running h2{font-size:16px;margin:3px 0;font-weight:750}
+.chageun-today .running p:not(.eyebrow){font-size:11px;line-height:1.5}
+.chageun-today .running .timer{font-size:26px;color:#2d60cb;font-weight:850}
+.chageun-today .study-columns{grid-template-columns:minmax(0,1.08fr) minmax(350px,.92fr);gap:19px;align-items:start}
+.chageun-today .study-columns>.card,.chageun-today .study-columns>div>.card{padding:25px}
+.chageun-today .section-title{margin-bottom:12px;align-items:center;gap:8px}
+.chageun-today .section-title h2{font-size:19px;font-weight:810;letter-spacing:-.65px}
+.chageun-today .section-title h3{font-size:13px;font-weight:750;margin:0}
+.chageun-today .section-title span{font-size:11px}
+.chageun-today .task-form{padding:13px 14px 17px;border-radius:15px;background:#f7f9fe;border:1px solid #edf1f8;margin-bottom:17px}
+.chageun-today .task-form label{margin:8px 0 4px;font-size:11px;font-weight:650;color:#536987}
+.chageun-today .task-form input{background:white;border:1px solid #e2eaf6;margin-top:6px;min-height:42px;padding:10px 13px;font-size:13px}
+.chageun-today .task-form .actions{margin-top:12px}
+.chageun-today .task-form .primary{font-size:12px;font-weight:750;margin:0;padding:11px 16px}
+.chageun-today .reuse-panel{padding:4px 0 16px;margin:0 0 10px;border-bottom:1px solid var(--line)}
+.chageun-today .reuse-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chageun-today button.reuse-option{display:flex;align-items:center;gap:9px;min-height:49px;padding:9px 11px;text-align:left;background:#fcfdff;border:1px solid #e9eef6;border-radius:12px}
+.chageun-today button.reuse-option:hover{background:#f1f6ff;border-color:#d4e3ff}
+.chageun-today .reuse-option>span:first-child{font-size:18px;color:#6a99d6}
+.chageun-today .reuse-label{min-width:0}
+.chageun-today .reuse-label small{font-size:10px;color:#89a0be}
+.chageun-today .reuse-label strong{font-size:11px;font-weight:650;color:var(--text);overflow-wrap:anywhere}
+.chageun-today .task{display:flex;align-items:center;justify-content:space-between;gap:13px;padding:17px 0;min-width:0}
+.chageun-today .task-main{flex:1;min-width:0;align-items:center}
+.chageun-today .task h3{font-size:14px;line-height:1.5;font-weight:750;margin:6px 0 4px}
+.chageun-today .elapsed{color:#637899;font-size:12px}
+.chageun-today .subject-tag{padding:4px 10px;border-radius:8px;font-size:10px;font-weight:800;letter-spacing:0}
+.chageun-today .task .actions{margin:0;max-width:225px;display:flex;justify-content:flex-end;gap:5px}
+.chageun-today .task .actions button{min-height:30px;border-radius:8px;padding:7px 8px;font-size:10px;white-space:nowrap}
+.chageun-today .task .actions .blue{background:#e8f0ff!important;color:#275fc7!important;border-color:#dce8fc!important;font-weight:700}
+.chageun-today .task .actions .task-complete[aria-pressed='true']{border-color:#bde6d5;background:#e7f8ef;color:#187454}
+.chageun-today .task.done{opacity:.75}
+.chageun-today .timeline-card{min-width:0;position:relative;overflow:hidden}
+.chageun-today .timeline-legend{display:flex;flex-wrap:wrap;align-items:center;gap:9px 12px;margin:11px 0 0}
+.chageun-today .timeline-legend>span{font-size:10px;color:var(--muted);display:inline-flex;gap:5px;align-items:center;max-width:100%}
+.chageun-today .timeline-legend i{width:8px;height:8px;border-radius:3px;display:inline-block;flex-shrink:0}
+.chageun-today .timeline-scroll{margin-top:11px;max-height:680px;overflow:auto;scrollbar-width:thin;scrollbar-color:#c3d3ea transparent;padding:7px 4px 7px 0}
+.chageun-today .tick{border-color:#edf1f8}
+.chageun-today .tick span{font-variant-numeric:tabular-nums;font-weight:600;font-size:10px;color:#91a1b8}
+.chageun-today .time-block{left:58px;right:7px;border-radius:7px;min-height:3px;box-shadow:0 1px 3px #273b5a20;color:white;font-size:11px;font-weight:700;text-shadow:0 1px 1px #0002;line-height:1.4;padding:5px 9px}
+.chageun-today .time-block:hover{filter:brightness(.96);box-shadow:0 3px 10px #273b5a2c}
+.chageun-today .school-list>div{border-radius:9px;padding:11px 13px;min-width:0}
+.chageun-today .school-list .current{background:#eaf2ff;color:#275db8}
+.chageun-today .below{margin-top:20px}
+.chageun-today .empty{padding:14px 0;color:#7890ae}
+
+/* Dark palette maintains the same hierarchy without bleaching the content. */
+.app.dark .chageun-today .exam-today-banner{background:linear-gradient(115deg,#1d2c42,#233957);border-color:#344b69}
+.app.dark .chageun-today .exam-today-banner::before{background:#2b4368;color:#b5cff9}
+.app.dark .chageun-today .exam-countdown{background:#2a4269;color:#c3d8ff}
+.app.dark .chageun-today .complete-card{background:linear-gradient(145deg,#202f49,#263d5d)}
+.app.dark .chageun-today .complete-card p{color:#bed1ea}
+.app.dark .chageun-today .complete-card strong{color:#eaf2ff}
+.app.dark .chageun-today .current-class{background:linear-gradient(145deg,#1d2b3f,#23354c);border-color:#344560}
+.app.dark .chageun-today .running{background:linear-gradient(100deg,#1d2e4a,#213a5b);border-color:#39557a}
+.app.dark .chageun-today .running .timer{color:#a7c7ff}
+.app.dark .chageun-today .task-form{background:#1b2a40;border-color:#33445a}
+.app.dark .chageun-today .task-form input{background:#202f48;border-color:#334963}
+.app.dark .chageun-today button.reuse-option{background:#1a2a42;border-color:#344761}
+.app.dark .chageun-today .reuse-label strong{color:#e0edff}
+.app.dark .chageun-today .tick{border-color:#33435b}
+.app.dark .chageun-today .tick span{color:#aec2df}
+.app.dark .chageun-today .school-list .current{background:#233f69;color:#bdd7ff}
+
+@media(min-width:1550px){.app main{padding-left:clamp(38px,4vw,76px);padding-right:clamp(38px,4vw,76px)}}
+@media(max-width:1170px){
+ .app main{margin-left:195px;padding:22px 25px}
+ .app aside{width:195px;padding:24px 13px}
+ .chageun-today .today-top{grid-template-columns:1fr 1fr}
+ .chageun-today .today-top>.current-class{grid-column:1/-1;min-height:110px}
+ .chageun-today .study-columns{grid-template-columns:minmax(0,1fr) minmax(300px,.94fr);gap:14px}
+ .chageun-today .task{display:block}
+ .chageun-today .task .actions{max-width:none;justify-content:flex-start;margin-top:12px}
+}
+@media(max-width:850px){
+ .app main{margin-left:170px;padding:18px}
+ .app aside{width:170px}
+ .app nav button{font-size:12px;padding:11px 10px;gap:7px}
+ .chageun-today .study-columns{grid-template-columns:1fr}
+ .chageun-today .today-top{grid-template-columns:1.1fr .9fr}
+}
+@media(max-width:640px){
+ .app aside{inset:auto 0 0;width:100%;height:75px;padding:7px 6px;display:block;box-shadow:0 -6px 24px #142d4817;overflow:visible}
+ .app .brand,.app .aside-bottom{display:none}
+ .app nav{display:flex;gap:4px;justify-content:flex-start;overflow-x:auto;scrollbar-width:none}
+ .app nav::-webkit-scrollbar{display:none}
+ .app nav button{min-width:58px;min-height:58px;padding:7px 6px;flex-direction:column;gap:5px;align-items:center;justify-content:center;font-size:10px;flex:0 0 auto}
+ .app nav button>span:first-child{font-size:20px;width:auto;flex:none}
+ .app main{margin:0;padding:16px 13px 94px}
+ .app .heading{min-height:48px;margin:10px 0}
+ .app .heading h1{font-size:26px}
+ .app .heading>span.badge{display:none}
+ .app .account-strip{font-size:10px}
+ .chageun-today .exam-today-banner{padding:15px;min-height:83px;gap:10px}
+ .chageun-today .exam-today-banner::before{width:30px;height:30px;flex-basis:30px;font-size:15px}
+ .chageun-today .exam-countdown{font-size:19px;padding:8px 10px}
+ .chageun-today .exam-today-banner h2{font-size:14px}
+ .chageun-today .today-controls{align-items:stretch;gap:8px}
+ .chageun-today .daybar-range{font-size:10px}
+ .chageun-today .live-clock{margin-left:auto;min-width:140px}
+ .chageun-today .today-top{grid-template-columns:1fr 1fr;gap:9px}
+ .chageun-today .today-top>*{min-height:128px;padding:17px 14px}
+ .chageun-today .today-top>.current-class{grid-column:1/-1;min-height:95px}
+ .chageun-today .summary-card strong{font-size:23px}
+ .chageun-today .complete-card strong{font-size:28px}
+ .chageun-today .study-columns>div>.card,.chageun-today .study-columns>.card{padding:18px 16px}
+ .chageun-today .reuse-list{grid-template-columns:1fr 1fr}
+ .chageun-today .task{display:block}
+ .chageun-today .task .actions{gap:5px}
+ .chageun-today .timeline-scroll{max-height:590px}
+ .chageun-today .running{padding:14px}
+ .chageun-today .running .timer{font-size:22px}
+}
+@media(prefers-reduced-motion:reduce){.chageun-today{animation:none}.chageun-today *{transition:none!important}}
+/* Honor each user's saved accent preference without changing subject colors. */
+.app .brand{color:var(--accent)}
+.app nav button[aria-current]{background:var(--accent-soft);color:var(--accent-strong);box-shadow:inset 0 0 0 1px var(--accent-border)}
+.app.dark nav button[aria-current]{background:var(--accent-soft);color:var(--text);box-shadow:inset 0 0 0 1px var(--accent-border)}
+.app .heading>span.badge{background:var(--accent-soft);color:var(--accent-strong);border-color:var(--accent-border)}
+.app button.primary{background:var(--accent)}
+.app button.primary:hover:not(:disabled){background:var(--accent-strong)}
+.chageun-today .summary-card{background:linear-gradient(125deg,var(--accent-strong),var(--accent-mid))}
+.chageun-today .progress-track>span{background:linear-gradient(90deg,var(--accent),var(--accent-mid))}
+.chageun-today .daybar .small{background:var(--accent-soft);color:var(--accent-strong);border-color:var(--accent-border)}
+.chageun-today .exam-today-banner{border-color:var(--accent-border)}
+.chageun-today .exam-countdown{background:var(--accent-soft);color:var(--accent-strong)}
+.chageun-today .running .timer{color:var(--accent)}

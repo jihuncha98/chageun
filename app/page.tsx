@@ -115,8 +115,8 @@ export default function Home(){
  const visibleIcons=isAdmin?[...tabIcons,'⚑']:tabIcons;
  return <div className={dark?'app dark':'app'} data-accent={accent} data-font={font}>
   <aside><a className="brand" href="#">차근<span>{subtitle}</span></a><nav aria-label="주 메뉴">{visibleTabs.map((t,i)=><button key={t} aria-current={tab===t?'page':undefined} onClick={()=>setTab(t)}><span>{visibleIcons[i]}</span>{t}{t==='알림'&&(unreadCount+adminUnread)>0&&authenticated&&<span className="nav-notice-count" aria-label={`읽지 않은 알림 ${unreadCount+adminUnread}개`}>{unreadCount+adminUnread>9?'9+':unreadCount+adminUnread}</span>}</button>)}</nav><div className="aside-bottom">작은 실천이 쌓이는 곳<br/><strong>오늘도, 차근차근.</strong></div></aside>
-  <main><header><span>나만의 공부 공간</span><button className="quiet" onClick={()=>setAppearanceTheme(!dark)} aria-pressed={dark}>{dark?'☀ 라이트 모드':'☾ 다크 모드'}</button></header>
-   <section className="heading"><div><p className="eyebrow">CHAGEUN · MY STUDY SPACE</p><h1>{tab==='오늘'?'오늘도 한 걸음, 차근.':tab}</h1><p>나의 속도로 계획하고, 하루의 성실함을 쌓아가요.</p></div><span className="badge">차근 · 나의 공부 공간</span></section>
+  <main><header><span>CHAGEUN <span className="header-separator">/</span> MY STUDY SPACE</span><button className="quiet" onClick={()=>setAppearanceTheme(!dark)} aria-pressed={dark}>{dark?'☀ 라이트 모드':'☾ 다크 모드'}</button></header>
+   <section className="heading"><div><p className="eyebrow">CHAGEUN · MY STUDY SPACE</p><h1>{tab==='오늘'?'오늘의 공부':tab}</h1>{tab!=='오늘'&&<p>차근차근, 나만의 공부 공간</p>}</div><span className="badge">오늘도, 차근차근.</span></section>
    {authenticated&&session?<>
     <div className="account-strip"><span>{session.user.email}</span><button className="small" onClick={()=>void logout()}>로그아웃</button></div>
     {tab==='관리자'&&isAdmin?<AdminPanel/>:now&&<StudyDashboard key={session.user.id} userId={session.user.id} tab={tab} now={now.getTime()} profileUser={session.user} onProfileSaved={updateProfileUser} onUnreadCountChange={setUnreadCount} appearance={{dark,accent,font}} onAppearanceTheme={setAppearanceTheme} onAppearanceAccent={setAppearanceAccent} onAppearanceFont={setAppearanceFont}/>}
