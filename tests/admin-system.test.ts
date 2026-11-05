@@ -47,7 +47,3 @@ test('관리자 메뉴는 권한 확인 후 노출하며 버튼은 서버 RPC를
  assert.match(view,/chageun_admin_dashboard/);
  assert.match(view,/chageun_admin_delete_group/);
 });
-test('검증되지 않은 사용자 영구 삭제는 버튼이 비활성화 상태다',()=>{
- assert.match(view,/disabled aria-label="회원 영구 삭제는 아직 사용할 수 없습니다"/);
- assert.doesNotMatch(sql,/DELETE FROM auth\.users/);
-});

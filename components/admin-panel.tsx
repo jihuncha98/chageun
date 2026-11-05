@@ -53,7 +53,6 @@ export default function AdminPanel(){
  return <div className="admin-panel">
   <section className="card"><p className="eyebrow">ADMINISTRATION</p><h2>차근 전체 관리자</h2>
    <p>관리자 권한은 서버에서 확인해요. 표시 이름은 로그인 후 ‘○○의 근면성실’에, 친구 별명은 친구 목록에 표시돼요.</p>
-   <p className="notice">회원 계정 영구 삭제는 인증 서버와 그룹 자동 승계 검증을 완료할 때까지 비활성화했어요. 기존 계정과 공부 기록은 이번 업데이트에서 삭제되지 않아요.</p>
    <div className="admin-tabs">{([['users','회원 관리'],['groups','그룹 관리'],['archived','삭제된 그룹'],['history','관리 기록']] as const).map(([key,name])=><button className="small" aria-pressed={section===key} key={key} onClick={()=>setSection(key)}>{name}</button>)}</div>
    {error&&<p role="alert" className="notice error">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}
    {loading?<p>관리자 정보를 불러오는 중…</p>:<>
@@ -74,7 +73,12 @@ export default function AdminPanel(){
        }}>표시 이름 수정</button>
        <button className="small" disabled={busy} onClick={()=>{const value=window.prompt(`${user.nickname}님의 새 친구 별명을 입력해 주세요.`,user.nickname);if(value!==null&&window.confirm(`정말 ${user.nickname}님의 친구 별명을 「${value}」(으)로 변경할까요?`))void act('chageun_admin_set_nickname',{p_user:user.id,p_nickname:value},'친구 별명을 수정했어요.');}}>별명 수정</button>
        <button className="small" disabled={busy} onClick={()=>setSelection(selection===user.id?'':user.id)}>채팅 제한</button>
-       <button className="small" disabled aria-label="회원 영구 삭제는 아직 사용할 수 없습니다">회원 삭제 (준비 중)</button>
+       <button className="small" disabled={busy||!user.email} onClick={()=>{
+        const email=window.prompt(`${user.nickname}님의 계정과 공부 기록을 영구 삭제합니다. 남은 정식 그룹원이 있으면 그룹장이 승계됩니다. 없으면 그룹과 초대가 삭제됩니다. 계속하려면 대상 이메일을 입력하세요.`);
+        if(email===null)return;
+        if(email.trim().toLowerCase()!==user.email?.toLowerCase()){setError('대상 이메일이 일치하지 않아요.');return;}
+        void act('chageun_delete_account',{p_user:user.id,p_email:email},'회원 계정을 삭제했어요.');
+       }}>회원 영구 삭제</button>
       </div>}
      </div>)}</div>
      {selectedUser&&!selectedUser.isAdmin&&<div className="admin-limit"><h3>{selectedUser.nickname} · 채팅 제한</h3><p>그룹 채팅 개발 후 서버에서 제한 종료 시각을 검사하도록 연결할 예정이야.</p>
