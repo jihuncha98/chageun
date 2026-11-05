@@ -3,6 +3,7 @@ import {useCallback,useEffect,useMemo,useRef,useState,type FormEvent} from 'reac
 import {supabase} from '../lib/supabase';
 import {sharedStudyTime} from '../lib/live-board-time';
 import {studyDay} from '../lib/study-day';
+import {fetchVisibleNames,visibleLabel} from '../lib/visible-names';
 import {friendLastSeen,friendTime,rankFriends,validFriendCode,type FriendBoardRow,type FriendOverview,type FriendProfile} from '../lib/friends';
 
 const message=(error:unknown)=>error instanceof Error?error.message:'연결을 확인해 주세요.';
@@ -38,8 +39,13 @@ export default function FriendsView({now}:{now:number}){
    if(boardResult.error)throw boardResult.error;
    if(!alive.current||requestNumber!==refreshSeq.current)return;
    const next=overviewResult.data as FriendOverview;
-   setOverview(next);
-   setBoard((boardResult.data??[]) as FriendBoardRow[]);
+   const rawBoard=(boardResult.data??[]) as FriendBoardRow[];
+   // The live display name is kept in auth metadata, separate from the friend nickname.
+   // A failed lookup must never hide study times or break the friends view.
+   const names=await fetchVisibleNames([...next.connections.map(c=>c.id),...rawBoard.map(r=>r.member_id)]).catch(()=>new Map());
+   if(!alive.current||requestNumber!==refreshSeq.current)return;
+   setOverview({...next,connections:next.connections.map(c=>({...c,nickname:visibleLabel(names,c.id,c.nickname)}))});
+   setBoard(rawBoard.map(r=>({...r,display_name:visibleLabel(names,r.member_id,r.display_name)})));
    setBoardReceivedAt(Date.now());
    setError('');
   }catch(e){if(alive.current&&requestNumber===refreshSeq.current)setError(message(e));}

@@ -1,9 +1,11 @@
 'use client';
 import GroupChat from './group-chat';
-import {useCallback,useEffect,useState} from 'react';
+import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
+import {personName} from '../lib/visible-names';
 
 type UserRow={id:string;email:string|null;nickname:string;displayName?:string|null;friendCode:string|null;createdAt:string;isAdmin:boolean};
+type NameEdit={id:string;kind:'display'|'nickname';value:string;reason:string};
 type Member={userId:string;nickname:string;joinedAt:string|null;status:'accepted'|'pending';isOwner:boolean};
 type GroupRow={id:string;name:string;ownerId:string;createdAt:string;members:Member[]};
 type Archived={id:string;name:string;deletedAt:string;expiresAt:string;memberCount:number};
@@ -23,6 +25,7 @@ export default function AdminPanel(){
  const [reason,setReason]=useState('');
  const [section,setSection]=useState<'users'|'groups'|'archived'|'history'>('users');
  const [selection,setSelection]=useState('');
+ const [nameEdit,setNameEdit]=useState<NameEdit|null>(null);
  const refresh=useCallback(async()=>{
   if(!supabase)return;
   const {data:result,error:rpcError}=await supabase.rpc('chageun_admin_dashboard');
@@ -38,24 +41,50 @@ export default function AdminPanel(){
   },0);
   return()=>{alive=false;clearTimeout(timer);};
  },[refresh]);
- async function act(fn:string,args:Record<string,unknown>,done:string,actionReason=reason,feedbackId=''){
+ async function act(fn:string,args:Record<string,unknown>,done:string,actionReason=reason,feedbackId=''):Promise<boolean>{
   setFeedbackUser(feedbackId);
-  if(!supabase||busy)return;
-  if(actionReason.trim().length<2){setError('먼저 조치 사유를 두 글자 이상 입력해 주세요.');return;}
+  if(!supabase||busy)return false;
+  if(actionReason.trim().length<2||actionReason.trim().length>150){setError('조치 사유를 2~150자로 입력해 주세요.');return false;}
   setBusy(true);setError('');setNotice('');
   try{
    const {error:rpcError}=await supabase.rpc(fn,{...args,p_reason:actionReason.trim()});
    if(rpcError)throw rpcError;
-   await refresh();setNotice(done);setReason('');
-  }catch(e){setError(readable(e));}
+   await refresh();setNotice(done);setReason('');return true;
+  }catch(e){setError(readable(e));return false;}
   finally{setBusy(false);}
+ }
+ function beginNameEdit(user:UserRow,kind:'display'|'nickname'){
+  setError('');setNotice('');setFeedbackUser('');
+  setNameEdit({id:user.id,kind,value:kind==='display'?user.displayName??'':user.nickname,reason:reason.trim()});
+ }
+ async function saveName(e:FormEvent<HTMLFormElement>){
+  e.preventDefault();
+  if(!nameEdit)return;
+  const user=data.users.find(u=>u.id===nameEdit.id);
+  if(!user||user.isAdmin)return;
+  const value=nameEdit.value.trim().replace(/\s+/g,' ');
+  const reasonText=nameEdit.reason.trim();
+  setFeedbackUser(user.id);setError('');setNotice('');
+  if(reasonText.length<2||reasonText.length>150){setError('변경 사유는 2~150자로 입력해 주세요.');return;}
+  const isDisplay=nameEdit.kind==='display';
+  if(!value||value.length>(isDisplay?24:20)||(!isDisplay&&value.length<2)){
+   setError(isDisplay?'표시 이름은 1~24자로 입력해 주세요.':'친구 별명은 2~20자로 입력해 주세요.');return;
+  }
+  if(value===(isDisplay?user.displayName??'':user.nickname)){
+   setNotice('현재 이름과 같아요. 변경할 이름을 입력해 주세요.');return;
+  }
+  const success=await act(isDisplay?'chageun_admin_set_display_name':'chageun_admin_set_nickname',
+   isDisplay?{p_user:user.id,p_name:value,p_expected:user.displayName??null}:{p_user:user.id,p_nickname:value},
+   `${isDisplay?'표시 이름':'친구 별명'}을 「${value}」(으)로 변경했어요.`,reasonText,user.id);
+  if(success)setNameEdit(null);
  }
  const [feedbackUser,setFeedbackUser]=useState('');
  const selectedUser=data.users.find(x=>x.id===selection);
+ const adminNames=new Map(data.users.map(user=>[user.id,personName(user.displayName,user.nickname)]));
  const filtered=data.users.filter(x=>`${x.nickname} ${x.displayName??''} ${x.friendCode??''} ${x.email??''}`.toLowerCase().includes(search.trim().toLowerCase()));
  return <div className="admin-panel">
   <section className="card"><p className="eyebrow">ADMINISTRATION</p><h2>차근 전체 관리자</h2>
-   <p>관리자 권한은 서버에서 확인해요. 표시 이름은 로그인 후 ‘○○의 근면성실’에, 친구 별명은 친구 목록에 표시돼요.</p>
+   <p>관리자 권한은 서버에서 확인해요. 표시 이름은 차근 제목의 ‘○○의 근면성실’과 친구·그룹의 기본 이름으로 사용하고, 친구 별명은 함께 별도 표기해요.</p>
    <div className="admin-tabs">{([['users','회원 관리'],['groups','그룹 관리'],['archived','삭제된 그룹'],['history','관리 기록']] as const).map(([key,name])=><button className="small" aria-pressed={section===key} key={key} onClick={()=>setSection(key)}>{name}</button>)}</div>
    {error&&<p role="alert" className="notice error">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}
    {loading?<p>관리자 정보를 불러오는 중…</p>:<>
@@ -63,22 +92,10 @@ export default function AdminPanel(){
     {section==='users'&&<>
      <label>회원 검색 (표시 이름·별명·이메일·친구 코드)<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="검색어 입력"/></label>
      <div className="admin-list">{filtered.map(user=><div className="admin-item" key={user.id}>
-      <div className="admin-item-details"><strong>{user.nickname}</strong>{user.isAdmin&&<span className="admin-status">전체 관리자</span>}<p>{user.email??'이메일 확인 불가'}</p><small>표시 이름 {user.displayName||'미설정'} · 친구 코드 {user.friendCode??'미설정'}</small></div>
+      <div className="admin-item-details"><strong>{personName(user.displayName,user.nickname)}</strong>{user.isAdmin&&<span className="admin-status">전체 관리자</span>}<p>{user.email??'이메일 확인 불가'}</p><small>표시 이름: {user.displayName||'미설정'} · 친구 별명: {user.nickname} · 친구 코드: {user.friendCode??'미설정'}</small></div>
       {!user.isAdmin&&<div className="admin-actions">
-       <button className="small" disabled={busy || user.displayName===undefined} onClick={()=>{
-        setFeedbackUser(user.id);setNotice('');setError('');
-        const actionReason=reason.trim().length>=2?reason.trim():window.prompt('표시 이름을 변경하는 사유를 입력해 주세요. (2~150자)');
-        if(actionReason===null)return;
-        if(actionReason.trim().length<2||actionReason.trim().length>150){setError('조치 사유는 2~150자로 입력해 주세요.');return;}
-        const value=window.prompt(`${user.email??user.nickname}님의 새 표시 이름을 입력해 주세요. (1~24자)`,user.displayName??'');
-        if(value===null)return;
-        const name=value.trim().replace(/\s+/g,' ');
-        if(!name || name.length>24){setError('표시 이름은 1~24자로 입력해 주세요.');return;}
-        if(window.confirm(`이 회원의 표시 이름을 「${name}」(으)로 변경할까요?`)){
-         void act('chageun_admin_set_display_name',{p_user:user.id,p_name:name,p_expected:user.displayName},`표시 이름을 「${name}」(으)로 수정했어요.`,actionReason,user.id);
-        }
-       }}>표시 이름 수정</button>
-       <button className="small" disabled={busy} onClick={()=>{const value=window.prompt(`${user.nickname}님의 새 친구 별명을 입력해 주세요.`,user.nickname);if(value!==null&&window.confirm(`정말 ${user.nickname}님의 친구 별명을 「${value}」(으)로 변경할까요?`))void act('chageun_admin_set_nickname',{p_user:user.id,p_nickname:value},'친구 별명을 수정했어요.');}}>별명 수정</button>
+       <button className="small" disabled={busy||user.displayName===undefined} onClick={()=>beginNameEdit(user,'display')}>표시 이름 수정</button>
+       <button className="small" disabled={busy} onClick={()=>beginNameEdit(user,'nickname')}>친구 별명 수정</button>
        <button className="small" disabled={busy} onClick={()=>setSelection(selection===user.id?'':user.id)}>채팅 제한</button>
        <button className="small" disabled={busy||!user.email} onClick={()=>{
         const email=window.prompt(`${user.nickname}님의 계정과 공부 기록을 영구 삭제합니다. 남은 정식 그룹원이 있으면 그룹장이 승계됩니다. 없으면 그룹과 초대가 삭제됩니다. 계속하려면 대상 이메일을 입력하세요.`);
@@ -87,7 +104,24 @@ export default function AdminPanel(){
         void act('chageun_delete_account',{p_user:user.id,p_email:email},'회원 계정을 삭제했어요.');
        }}>회원 영구 삭제</button>
       </div>}
-      {feedbackUser===user.id&&(error||notice)&&<p className="notice" role="status">{error||notice}</p>}
+      {nameEdit?.id===user.id&&<form className="admin-name-editor" onSubmit={e=>void saveName(e)}>
+       <h3>{nameEdit.kind==='display'?'표시 이름 수정':'친구 별명 수정'}</h3>
+       <p className="fine">{nameEdit.kind==='display'?'다른 사람의 친구·그룹 목록에도 표시되는 이름이에요.':'표시 이름과는 별도로 친구·그룹에서 함께 표시되는 별명이에요.'}</p>
+       <label>현재 이름<input readOnly value={nameEdit.kind==='display'?user.displayName??'미설정':user.nickname}/></label>
+       <label>새 {nameEdit.kind==='display'?'표시 이름':'친구 별명'}
+        <input required minLength={nameEdit.kind==='display'?1:2} maxLength={nameEdit.kind==='display'?24:20}
+         value={nameEdit.value} onChange={e=>setNameEdit({...nameEdit,value:e.target.value})} placeholder="변경할 이름"/>
+       </label>
+       <label>변경 사유 (2~150자)
+        <input required minLength={2} maxLength={150} value={nameEdit.reason}
+         onChange={e=>setNameEdit({...nameEdit,reason:e.target.value})} placeholder="예: 본인 요청"/>
+       </label>
+       <div className="admin-actions">
+        <button className="small blue" disabled={busy} type="submit">{busy?'저장 중…':'변경 저장'}</button>
+        <button className="small" type="button" disabled={busy} onClick={()=>setNameEdit(null)}>취소</button>
+       </div>
+      </form>}
+      {feedbackUser===user.id&&(error||notice)&&<p className={error?'notice error':'notice'} role="status">{error||notice}</p>}
      </div>)}</div>
      {selectedUser&&!selectedUser.isAdmin&&<div className="admin-limit"><h3>{selectedUser.nickname} · 채팅 제한</h3><p>제한 시간 동안 모든 그룹에서 메시지 전송이 차단돼요.</p>
       <div className="admin-actions">{([5,30,60,1440,0] as const).map(n=><button key={n} className="small" disabled={busy} onClick={()=>{const label=n===0?'제한 해제':`${n>=60?n/60+'시간':n+'분'} 제한`;if(window.confirm(`${selectedUser.nickname}님에게 ${label} 조치를 적용할까요?`))void act('chageun_admin_chat_limit',{p_user:selectedUser.id,p_minutes:n},`${label}을(를) 적용했어요.`);}}>{n===0?'제한 해제':n===1440?'24시간':n===60?'1시간':`${n}분`}</button>)}</div>
@@ -97,7 +131,7 @@ export default function AdminPanel(){
      <div className="admin-item-details"><strong>{group.name}</strong><p>구성원 {group.members.filter(x=>x.status==='accepted').length}명 · 생성 {koreanTime(group.createdAt)}</p></div>
      <GroupChat groupId={group.id} readOnly/>
    <div className="admin-members">{group.members.map(m=><div className="admin-member" key={m.userId}>
-      <span>{m.nickname} {m.isOwner?'· 그룹 관리자':m.status==='pending'?'· 초대 대기':''}</span>
+      <span>{adminNames.get(m.userId)??m.nickname} {m.isOwner?'· 그룹 관리자':m.status==='pending'?'· 초대 대기':''}</span>
       <div className="admin-actions">
        {!m.isOwner&&m.status==='accepted'&&<button className="small" disabled={busy} onClick={()=>{if(window.confirm(`${m.nickname}님을 이 그룹의 관리자로 지정할까요?`))void act('chageun_admin_transfer_owner',{p_group:group.id,p_new_owner:m.userId},'그룹 관리자를 변경했어요.');}}>관리자 지정</button>}
        {!m.isOwner&&<button className="small" disabled={busy} onClick={()=>{if(window.confirm(`${m.nickname}님을 그룹에서 강제 탈퇴시킬까요? 새 초대를 받으면 재가입할 수 있어요.`))void act('chageun_admin_remove_member',{p_group:group.id,p_user:m.userId},'그룹원을 강제 탈퇴시켰어요.');}}>강제 탈퇴</button>}

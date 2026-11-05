@@ -4,6 +4,7 @@ import {useCallback,useEffect,useRef,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
 import {sharedStudyTime} from '../lib/live-board-time';
 import {studyDay} from '../lib/study-day';
+import {fetchVisibleNames,visibleLabel} from '../lib/visible-names';
 import {friendLastSeen,friendTime,validFriendCode} from '../lib/friends';
 import {clampGroupPage,GROUP_BOARD_PAGE_SIZE,groupPageCount,groupViewDescription,validGroupName,type GroupBoardRow,type GroupOverview} from '../lib/groups';
 
@@ -55,10 +56,25 @@ export default function GroupsView({now}:{now:number}){
     if(boardError)throw boardError;
     nextBoard=(rows??[]) as GroupBoardRow[];
    }
+   const names=await fetchVisibleNames([
+    ...next.groups.flatMap(g=>[g.ownerId,...g.members.map(m=>m.userId),...g.pendingInvites.map(m=>m.userId)]),
+    ...nextBoard.map(row=>row.member_id)
+   ]).catch(()=>new Map());
+   const invitesResult=await supabase.rpc('chageun_invitation_owner_labels');
+   const inviteNames=new Map<string,string>(((invitesResult.data??[]) as {group_id:string;owner_name:string}[])
+     .map(row=>[row.group_id,row.owner_name] as const));
+   const namedOverview:GroupOverview={...next,
+    invitations:next.invitations.map(inv=>({...inv,ownerName:inviteNames.get(inv.id)??inv.ownerName})),
+    groups:next.groups.map(g=>({
+    ...g,
+    members:g.members.map(m=>({...m,nickname:visibleLabel(names,m.userId,m.nickname)})),
+    pendingInvites:g.pendingInvites.map(m=>({...m,nickname:visibleLabel(names,m.userId,m.nickname)}))
+   }))};
+   const namedBoard=nextBoard.map(row=>({...row,display_name:visibleLabel(names,row.member_id,row.display_name)}));
    if(!mounted.current||req!==serial.current)return;
    setShareEnabled((init.data as {shareEnabled?:boolean}|null)?.shareEnabled!==false);
    selectedRef.current=target;pageRef.current=number;
-   setSelectedId(target);setPage(number);setOverview(next);setBoard(nextBoard);setBoardReceivedAt(Date.now());setError('');
+   setSelectedId(target);setPage(number);setOverview(namedOverview);setBoard(namedBoard);setBoardReceivedAt(Date.now());setError('');
   }catch(e){if(mounted.current&&req===serial.current)setError(`그룹 정보를 불러오지 못했어요. SQL 003 적용 여부를 확인해 주세요. (${message(e)})`);}
   finally{if(req===serial.current){fetching.current=false;if(mounted.current)setLoading(false);}}
  },[]);

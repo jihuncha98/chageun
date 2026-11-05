@@ -248,3 +248,9 @@ button.small{padding:9px 12px;border:1px solid var(--line);border-radius:9px;bac
 .admin-limit h3{margin:0}
 @media(max-width:640px){.admin-panel .card{padding:18px}.admin-member{align-items:start}.admin-member .admin-actions{width:100%}}
 @media(max-width:640px){.app nav{overflow-x:auto;justify-content:flex-start;overscroll-behavior-inline:contain}.app nav button{flex:0 0 auto;min-width:54px}}
+
+/* 관리자 이름/별명 편집: 일반 버튼과 수정폼의 영역을 명확하게 구분 */
+.admin-name-editor{margin:14px 0;padding:16px;border:1px solid var(--accent-border);border-radius:12px;background:var(--bg);display:grid;gap:12px;max-width:560px}
+.admin-name-editor h3,.admin-name-editor p{margin:0}
+.admin-name-editor label{display:grid;gap:6px;min-width:0}
+.admin-name-editor input{width:100%;min-width:0}
