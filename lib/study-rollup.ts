@@ -1,4 +1,4 @@
-import {alive,dayStart,DAY,sliceDay,type Study} from './study';
+import {alive,sliceDay,type Study} from './study';
 import {moveStudyDay,studyStatistics,type StudyStatistics} from './statistics';
 
 /** One row per user + study day (KST 06:00 boundary) + subject, from the RLS-protected preview table. */

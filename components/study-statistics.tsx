@@ -20,6 +20,7 @@ export default function StudyStatistics({userId,data,now,review,pending,busy,onE
  const [rollupState,setRollupState]=useState<{source:Study;rows:SavedStudyRollup[]}|null>(null);
  const [rollupError,setRollupError]=useState('');
  const currentStudyDay=studyDay(new Date(now));
+ const queryFrom=rollupQueryFrom(now); // 30일 범위는 초마다 바뀌지 않으므로 재조회 방지
  useEffect(()=>{
   if(pending){return;} // local changes must display from the local workspace until saved
   let canceled=false;
@@ -31,7 +32,7 @@ export default function StudyStatistics({userId,data,now,review,pending,busy,onE
     for(let offset=0;offset<10000;offset+=1000){
      const {data:rows,error}=await supabase.from('study_daily_rollup_durable')
       .select('study_day,subject_id,duration_ms').eq('user_id',userId)
-      .gte('study_day',rollupQueryFrom(now)).lte('study_day',currentStudyDay)
+      .gte('study_day',queryFrom).lte('study_day',currentStudyDay)
       .order('study_day',{ascending:true}).order('subject_id',{ascending:true})
       .range(offset,offset+999);
      if(error)throw Error(error.message);
@@ -43,9 +44,10 @@ export default function StudyStatistics({userId,data,now,review,pending,busy,onE
     if(!canceled){setRollupState({source:data,rows:parseStudyRollup(collected)});setRollupError('');}
    }catch(e){if(!canceled){setRollupState(null);setRollupError(e instanceof Error?e.message:'서버 통계를 읽지 못했어요.');}}
   };
-  void load();
-  return()=>{canceled=true;};
- },[data,userId,pending,currentStudyDay]);
+  // React effect 안에서 동기적으로 setState를 호출하지 않고 조회를 예약해요.
+  const timer=setTimeout(()=>{void load();},0);
+  return()=>{canceled=true;clearTimeout(timer);};
+ },[data,userId,pending,currentStudyDay,queryFrom]);
  const rawReport=useMemo(()=>studyStatistics(data,now,range),[data,now,range]);
  const verified=Boolean(!pending&&rollupState?.source===data&&rollupCoversRetainedRaw(data,now,range,rollupState.rows));
  const report=useMemo(()=>verified&&rollupState?studyStatisticsFromRollup(data,now,range,rollupState.rows):rawReport,[verified,rollupState,data,now,range,rawReport]);

@@ -4,7 +4,7 @@ import {supabase} from '../lib/supabase';
 import {sharedStudyTime} from '../lib/live-board-time';
 import {studyDay} from '../lib/study-day';
 import {friendLastSeen,friendTime,validFriendCode} from '../lib/friends';
-import {clampGroupPage,GROUP_BOARD_PAGE_SIZE,groupPageCount,groupViewDescription,validGroupName,type GroupBoardRow,type GroupOverview,type StudyGroup} from '../lib/groups';
+import {clampGroupPage,GROUP_BOARD_PAGE_SIZE,groupPageCount,groupViewDescription,validGroupName,type GroupBoardRow,type GroupOverview} from '../lib/groups';
 
 const message=(error:unknown)=>error instanceof Error?error.message:'연결을 확인해 주세요.';
 const initialOverview:GroupOverview={groups:[],invitations:[]};

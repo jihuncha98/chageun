@@ -12,7 +12,6 @@ export function sortedAssessments(rows:Assessment[]):Assessment[]{
 }
 /** Notifications are derived, not permanently stored. A notice is visible for at most seven calendar days. */
 export function assessmentNotices(rows:Assessment[],now:number):AssessmentNotice[]{
- const today=kstToday(now);
  const notices:AssessmentNotice[]=[];
  for(const item of alive(rows)){
   if(item.done||!validCalendarDate(item.date))continue;
