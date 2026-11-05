@@ -232,3 +232,19 @@ button.small{padding:9px 12px;border:1px solid var(--line);border-radius:9px;bac
  .assessment-day{font-size:19px}.assessment-actions{width:100%;justify-content:flex-end}
  .assessment-form-grid{grid-template-columns:1fr}
 }
+
+/* 차근 2.0 관리자 전용 — 모든 기존 테마에서 작동하는 간결한 구성 */
+.admin-tabs,.admin-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:14px 0}
+.admin-tabs button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-strong)}
+.admin-list{display:grid;gap:12px;margin-top:20px}
+.admin-item{border:1px solid var(--line);background:var(--panel);border-radius:13px;padding:18px;min-width:0;overflow-wrap:anywhere}
+.admin-item-details{display:grid;gap:5px}
+.admin-item-details p{margin:0}
+.admin-item-details small{color:var(--muted)}
+.admin-status{display:inline-flex;align-items:center;border-radius:10px;padding:5px 8px;background:var(--accent-soft);color:var(--accent-strong);width:max-content;font-size:11px}
+.admin-member{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line)}
+.admin-member:last-child{border-bottom:0}
+.admin-limit{border:1px solid var(--accent-border);border-radius:13px;padding:18px;margin-top:15px;background:var(--bg)}
+.admin-limit h3{margin:0}
+@media(max-width:640px){.admin-panel .card{padding:18px}.admin-member{align-items:start}.admin-member .admin-actions{width:100%}}
+@media(max-width:640px){.app nav{overflow-x:auto;justify-content:flex-start;overscroll-behavior-inline:contain}.app nav button{flex:0 0 auto;min-width:54px}}

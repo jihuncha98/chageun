@@ -151,7 +151,7 @@ export default function GroupsView({now}:{now:number}){
     </>}
    </section>
    <section className="card below"><h2>그룹 관리</h2><p>{group.isOwner?'관리자는 그룹을 삭제하거나 다른 그룹원에게 관리 권한을 넘길 수 있어요.':'그룹에서 나가면 이 그룹을 통한 공부 시간 공유가 끝나요.'}</p>
-    {group.isOwner?<button className="small" disabled={busy} onClick={()=>{if(confirm(`「${group.name}」 그룹을 삭제할까요? 모든 그룹원과 초대가 삭제되며 되돌릴 수 없어요. 개인 공부 기록은 삭제되지 않아요.`))void act('group_delete',{p_group:group.id},'그룹을 삭제했어요.');}}>그룹 삭제</button>:<button className="small" disabled={busy} onClick={()=>{if(confirm(`「${group.name}」 그룹에서 나갈까요?`))void act('group_leave',{p_group:group.id},'그룹에서 나왔어요.');}}>그룹 나가기</button>}
+    {group.isOwner?<button className="small" disabled={busy} onClick={()=>{if(confirm(`「${group.name}」 그룹을 삭제할까요? 그룹이 즉시 비활성화되고 전체 관리자가 7일 이내 복구할 수 있어요. 개인 공부 기록은 삭제되지 않아요.`))void act('group_delete',{p_group:group.id},'그룹을 삭제했어요. 전체 관리자는 7일 이내 복구할 수 있어요.');}}>그룹 삭제</button>:<button className="small" disabled={busy} onClick={()=>{if(confirm(`「${group.name}」 그룹에서 나갈까요?`))void act('group_leave',{p_group:group.id},'그룹에서 나왔어요.');}}>그룹 나가기</button>}
    </section>
   </>}
   {!loading&&!overview.groups.length&&!overview.invitations.length&&<p className="empty">아직 참여 중인 그룹이 없어요. 그룹을 만들거나 친구에게 초대를 요청해 보세요.</p>}
