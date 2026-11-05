@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-const component=fs.readFileSync('01_UPLOAD_TO_GITHUB_ROOT/components/study-statistics.tsx','utf8');
+const component=fs.readFileSync(new URL('../components/study-statistics.tsx',import.meta.url),'utf8');
 test('UI reads the durable table and no longer uses disposable preview',()=>{
  assert.match(component,/\.from\('study_daily_rollup_durable'\)/);
  assert.doesNotMatch(component,/\.from\('study_daily_rollup_preview'\)/);
