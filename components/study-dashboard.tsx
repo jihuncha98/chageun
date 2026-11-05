@@ -10,6 +10,8 @@ import FriendsView from './friends-view';
 import GroupsView from './groups-view';
 import StudyStatistics from './study-statistics';
 import ProfileSettings from './profile-settings';
+import FocusMode from './focus-mode';
+import {shouldShowFocusMode} from '../lib/focus-mode';
 import {ddayLabel,kstToday} from '../lib/exam-planning';
 import {DAY,activeEntry,alive,clock,cutEntry,dayStart,duration,localInput,nextDay,normalize,parseLocal,reusableTasks,reuseTask,scheduleNow,sliceDay,start,stop,subjectKey,total,uid,type Entry,type Study,type Task,type Lesson} from '../lib/study';
 function describeRecord(row:object){const r=row as Record<string,unknown>;const status=r.deleted_at?' · 휴지통':'';if('start' in r&&typeof r.start==='number')return `${localInput(r.start).replace('T',' ')} → ${r.end===null?'측정 중':localInput(Number(r.end)).replace('T',' ')}${status}`;return `${r.title??r.name??r.label??r.text??'기록'}${'day' in r?' · '+r.day:''}${r.done?' · 완료':''}${r.archived?' · 보관 중':''}${status}`;}
@@ -64,6 +66,27 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,...appearanc
  const nextExam=alive(s.exams).filter(x=>x.date>=kstToday(now)).sort((a,b)=>a.date.localeCompare(b.date))[0];
  const confirmation=active&&active.kind==='study'&&now-active.confirmed>=150*60000;
  const conflict=store.getConflicts();
+ // Focus is driven by the active saved timer, so it also reappears after reload
+ // and on other devices. Conflicts are an exception: keep recovery UI reachable.
+ if(shouldShowFocusMode(s,{ready:v.ready,review:v.review,remoteConflict:!!v.remote})&&active){
+  const activeTask=s.tasks.find(t=>t.id===active.taskId);
+  return <FocusMode
+   key={active.id}
+   subject={activeTask?subject(activeTask.subjectId):'공부'}
+   taskTitle={taskLabel(active.taskId)}
+   startedAt={active.start}
+   now={now}
+   busy={v.busy}
+   status={v.status}
+   error={uiError||v.error}
+   longSession={Boolean(confirmation)}
+   onContinue={()=>void write(d=>{const e=activeEntry(d);if(e)e.confirmed=Date.now();})}
+   onStop={stoppedAt=>void write(d=>{
+    const live=activeEntry(d);
+    if(live?.id===active.id)stop(d,stoppedAt);
+   })}
+  />;
+ }
  return <>
  <div className="sync-strip"><span className={v.pending||v.review?'pending':''}>{v.busy?'동기화 중…':v.status}</span><button className="small" onClick={()=>void store.sync()} disabled={v.busy}>다시 동기화</button></div>
  {(uiError||v.error)&&<div role="alert" className="notice error">{uiError||v.error}</div>}
