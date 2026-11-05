@@ -40,6 +40,29 @@ export default function Home(){
   });
   return()=>{active=false;data.subscription.unsubscribe();};
  },[]);
+ useEffect(()=>{
+  const client=supabase;
+  if(!client||!loggedInUserId||mode==='recovery')return;
+  let active=true;
+  let pending=false;
+  async function refreshProfile(){
+   if(!client||pending||document.hidden||!navigator.onLine)return;
+   pending=true;
+   try{
+    const {data}=await client.auth.getUser();
+    const user=data.user;
+    if(active&&user?.id===loggedInUserId&&user){
+     setSession(current=>current?.user.id===user.id?{...current,user}:current);
+    }
+   }catch{/* Retry on reconnect or the next refresh. */}
+   finally{pending=false;}
+  }
+  void refreshProfile();
+  const timer=setInterval(refreshProfile,15000);
+  document.addEventListener('visibilitychange',refreshProfile);
+  window.addEventListener('online',refreshProfile);
+  return ()=>{active=false;clearInterval(timer);document.removeEventListener('visibilitychange',refreshProfile);window.removeEventListener('online',refreshProfile);};
+ },[loggedInUserId,mode]);
  useEffect(()=>{const client=supabase;if(!client||!loggedInUserId||mode==='recovery')return;const ping=()=>{if(document.visibilityState==='visible'&&navigator.onLine)void client.rpc('friend_ping');};ping();const interval=setInterval(ping,90000);window.addEventListener('focus',ping);document.addEventListener('visibilitychange',ping);return()=>{clearInterval(interval);window.removeEventListener('focus',ping);document.removeEventListener('visibilitychange',ping)};},[loggedInUserId,mode]);
  useEffect(()=>{const client=supabase;if(!client||!loggedInUserId||mode==='recovery')return;let alive=true;const check=async()=>{try{const {data}=await client.rpc('chageun_is_admin');if(alive)setIsAdmin(data===true);}catch{if(alive)setIsAdmin(false);}};void check();return()=>{alive=false;};},[loggedInUserId,mode]);
  useEffect(()=>{if(!loggedInUserId||mode==='recovery')return;let alive=true;const refresh=async()=>{try{const notices=await fetchMyAdminNotices();if(alive)setAdminUnread(notices.filter(n=>!n.readAt).length);}catch{/* admin SQL 설치 전에는 기존 메뉴를 유지합니다. */}};void refresh();const id=setInterval(()=>void refresh(),60000);return()=>{alive=false;clearInterval(id);};},[loggedInUserId,mode,tab]);

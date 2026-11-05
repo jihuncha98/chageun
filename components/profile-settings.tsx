@@ -6,7 +6,8 @@ import {authErrorMessage,brandSubtitle,cleanDisplayName,DISPLAY_NAME_KEY,storedD
 
 /** Rendered only within the Settings tab, never as a sibling of the entire workspace. */
 export default function ProfileSettings({user,onSaved}:{user:User;onSaved:(user:User)=>void}){
- const [draft,setDraft]=useState(()=>storedDisplayName(user.user_metadata));
+ const [editing,setDraft]=useState<string|null>(null);
+ const draft=editing??storedDisplayName(user.user_metadata);
  const [busy,setBusy]=useState(false);
  const [notice,setNotice]=useState('');
  async function save(e:FormEvent<HTMLFormElement>){
@@ -17,7 +18,7 @@ export default function ProfileSettings({user,onSaved}:{user:User;onSaved:(user:
   try{
    const {data,error}=await supabase.auth.updateUser({data:{[DISPLAY_NAME_KEY]:name}});
    if(error){setNotice(authErrorMessage(error,'name'));return;}
-   onSaved(data.user);setDraft(name);setNotice('이름을 저장했어요. 왼쪽 차근 문구에도 반영됐어요.');
+   onSaved(data.user);setDraft(null);setNotice('이름을 저장했어요. 왼쪽 차근 문구에도 반영됐어요.');
   }catch{setNotice('서버와 연결할 수 없어요. 다시 시도해 주세요.');}
   finally{setBusy(false);}
  }

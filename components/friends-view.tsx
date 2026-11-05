@@ -11,14 +11,14 @@ export default function FriendsView({now}:{now:number}){
  const [overview,setOverview]=useState<FriendOverview|null>(null);
  const [board,setBoard]=useState<FriendBoardRow[]>([]);
  const [boardReceivedAt,setBoardReceivedAt]=useState(0);
- const [nickname,setNickname]=useState('');
+ const [editing,setNickname]=useState<string|null>(null);
+ const nickname=editing??overview?.profile.nickname??'';
  const [code,setCode]=useState('');
  const [busy,setBusy]=useState(false);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
  const [notice,setNotice]=useState('');
  const alive=useRef(true);
- const initialized=useRef(false);
  const refreshing=useRef(false);
  const refreshSeq=useRef(0);
  const refresh=useCallback(async(force=false)=>{
@@ -41,7 +41,6 @@ export default function FriendsView({now}:{now:number}){
    setOverview(next);
    setBoard((boardResult.data??[]) as FriendBoardRow[]);
    setBoardReceivedAt(Date.now());
-   if(!initialized.current){setNickname(next.profile.nickname);initialized.current=true;}
    setError('');
   }catch(e){if(alive.current&&requestNumber===refreshSeq.current)setError(message(e));}
   finally{if(requestNumber===refreshSeq.current){refreshing.current=false;if(alive.current)setLoading(false);}}
@@ -82,7 +81,7 @@ export default function FriendsView({now}:{now:number}){
   e.preventDefault();
   if(!overview)return;
   if(nickname.trim().length<2||nickname.trim().length>20){setError('별명은 2~20자로 입력해 주세요.');return;}
-  await act('friend_preferences',{p_nickname:nickname.trim(),p_enabled:overview.profile.shareEnabled},'프로필을 저장했어요.');
+  if(await act('friend_preferences',{p_nickname:nickname.trim(),p_enabled:overview.profile.shareEnabled},'프로필을 저장했어요.'))setNickname(null);
  }
  async function share(enabled:boolean){
   if(!overview)return;
