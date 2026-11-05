@@ -197,3 +197,38 @@ button.small{padding:9px 12px;border:1px solid var(--line);border-radius:9px;bac
 @media(max-width:640px){.chageun-focus-mode .focus-mode-inner{min-height:100%;padding:28px 0 14px}.chageun-focus-mode .focus-mode-time{font-size:clamp(40px,11.2vw,73px)}.chageun-focus-mode .focus-mode-activity{margin-bottom:20px}.chageun-focus-mode .focus-mode-bottom{min-height:120px}}
 @media(max-height:450px){.chageun-focus-mode .focus-mode-inner{min-height:0;gap:6px}.chageun-focus-mode .focus-mode-activity{margin-bottom:5px}.chageun-focus-mode .focus-mode-time{font-size:clamp(40px,9vh,100px)}.chageun-focus-mode .focus-mode-hint{margin-top:6px}.chageun-focus-mode .focus-mode-bottom{gap:4px;min-height:0}.chageun-focus-mode .focus-mode-stop{min-height:42px;padding:8px 28px}}
 @media(prefers-reduced-motion:reduce){.chageun-focus-mode .focus-mode-stop{transition:none}}
+
+/* 1.9 - Per-user assessments and seven-day in-app due-date notices */
+.app aside{overflow-y:auto}
+.app .aside-bottom{position:static;margin-top:26px}
+.app nav button{position:relative}
+.app .nav-notice-count{position:absolute;right:10px;top:9px;min-width:18px;height:18px;padding:2px 4px;border-radius:20px;background:#d93e58;color:#fff;font-size:10px;line-height:14px;text-align:center;font-weight:800}
+.assessment-empty{margin:20px 0 0;padding:26px 15px;border:1px dashed var(--line);border-radius:14px;text-align:center}
+.assessment-empty strong{font-size:15px}.assessment-empty p{margin:6px 0 0}
+.assessment-list,.assessment-notice-list{margin-top:18px}
+.assessment-row{display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--line);padding:20px 0}
+.assessment-row:last-child{border-bottom:0}
+.assessment-main{flex:1 1 210px;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.assessment-main strong{font-size:16px;overflow-wrap:anywhere}
+.assessment-main small,.assessment-notice small{color:var(--muted);font-size:12px}
+.assessment-done{text-decoration:line-through;color:var(--muted)}
+.assessment-finished .assessment-main,.assessment-finished .assessment-day{opacity:.7}
+.assessment-day{font-size:22px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--accent)}
+.assessment-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.assessment-check{border:1px solid var(--accent-border);background:var(--panel);border-radius:50%;height:38px;width:38px;flex-shrink:0;color:var(--accent);font-size:22px;display:grid;place-items:center}
+.assessment-check.is-checked{background:var(--accent-soft);font-weight:900}
+.assessment-form-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.assessment-notice{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 0;border-bottom:1px solid var(--line)}
+.assessment-notice:last-child{border:0}
+.assessment-notice-text{min-width:0;flex:1}.assessment-notice-heading{display:flex;gap:10px;align-items:center}
+.assessment-notice p{margin:6px 0;overflow-wrap:anywhere;color:var(--text)}
+.notification-unread-dot{display:inline-block;width:8px;height:8px;background:#d93e58;border-radius:100%}
+.assessment-notice.has-read{opacity:.7}.assessment-read-status{font-size:12px;color:var(--muted)}
+@media(max-width:640px){
+ .app nav{grid-template-columns:repeat(8,minmax(0,1fr))}
+ .app nav button{font-size:9px;letter-spacing:-.35px;padding:6px 1px}
+ .app .nav-notice-count{right:1px;top:1px;min-width:15px;height:15px;font-size:9px;line-height:11px;padding:2px}
+ .assessment-row{flex-wrap:wrap;gap:12px}.assessment-main{flex-basis:calc(100% - 88px)}
+ .assessment-day{font-size:19px}.assessment-actions{width:100%;justify-content:flex-end}
+ .assessment-form-grid{grid-template-columns:1fr}
+}

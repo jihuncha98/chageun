@@ -7,14 +7,15 @@ import StudyDashboard from '../components/study-dashboard';
 import {readAppearance,appearanceStorageKeys,type Accent,type FontChoice} from '../lib/appearance';
 import {authErrorMessage,authReturnUrl,brandSubtitle} from '../lib/auth-ui';
 
-const tabs=['오늘','시험 대비','통계','친구','그룹','설정'];
-const tabIcons=['◷','▦','▥','♧','◎','⚙'];
+const tabs=['오늘','시험 대비','수행평가','통계','친구','그룹','알림','설정'];
+const tabIcons=['◷','▦','▤','▥','♧','◎','🔔','⚙'];
 type AuthMode='login'|'signup'|'forgot'|'recovery';
 function PasswordFields({confirmation=false,autoComplete='new-password'}:{confirmation?:boolean;autoComplete?:string}) {
  return <><label>비밀번호<input name="password" type="password" autoComplete={autoComplete} minLength={8} maxLength={128} required placeholder="8자 이상"/></label>{confirmation&&<label>비밀번호 확인<input name="password_confirm" type="password" autoComplete="new-password" minLength={8} maxLength={128} required placeholder="같은 비밀번호를 다시 입력"/></label>}</>;
 }
 export default function Home(){
  const [tab,setTab]=useState('오늘');
+ const [unreadCount,setUnreadCount]=useState(0);
  const [dark,setDark]=useState(false);const [accent,setAccent]=useState<Accent>('blue');const [font,setFont]=useState<FontChoice>('sans');
  const [now,setNow]=useState<Date|null>(null);
  const [session,setSession]=useState<Session|null>(null);
@@ -31,7 +32,7 @@ export default function Home(){
    if(!active)return;
    setSession(s);
    if(event==='PASSWORD_RECOVERY'){setMode('recovery');setMessage('이메일 인증이 완료됐어요. 새로운 비밀번호를 설정해 주세요.');}
-   if(event==='SIGNED_OUT'){setMode('login');}
+   if(event==='SIGNED_OUT'){setMode('login');setUnreadCount(0);}
   });
   return()=>{active=false;data.subscription.unsubscribe();};
  },[]);
@@ -82,12 +83,12 @@ export default function Home(){
  const authenticated=Boolean(session)&&mode!=='recovery';
  const subtitle=brandSubtitle(authenticated,authenticated?session?.user.user_metadata:undefined);
  return <div className={dark?'app dark':'app'} data-accent={accent} data-font={font}>
-  <aside><a className="brand" href="#">차근<span>{subtitle}</span></a><nav aria-label="주 메뉴">{tabs.map((t,i)=><button key={t} aria-current={tab===t?'page':undefined} onClick={()=>setTab(t)}><span>{tabIcons[i]}</span>{t}</button>)}</nav><div className="aside-bottom">작은 실천이 쌓이는 곳<br/><strong>오늘도, 차근차근.</strong></div></aside>
+  <aside><a className="brand" href="#">차근<span>{subtitle}</span></a><nav aria-label="주 메뉴">{tabs.map((t,i)=><button key={t} aria-current={tab===t?'page':undefined} onClick={()=>setTab(t)}><span>{tabIcons[i]}</span>{t}{t==='알림'&&unreadCount>0&&authenticated&&<span className="nav-notice-count" aria-label={`읽지 않은 알림 ${unreadCount}개`}>{unreadCount>9?'9+':unreadCount}</span>}</button>)}</nav><div className="aside-bottom">작은 실천이 쌓이는 곳<br/><strong>오늘도, 차근차근.</strong></div></aside>
   <main><header><span>나만의 공부 공간</span><button className="quiet" onClick={()=>setAppearanceTheme(!dark)} aria-pressed={dark}>{dark?'☀ 라이트 모드':'☾ 다크 모드'}</button></header>
    <section className="heading"><div><p className="eyebrow">CHAGEUN · MY STUDY SPACE</p><h1>{tab==='오늘'?'오늘도 한 걸음, 차근.':tab}</h1><p>나의 속도로 계획하고, 하루의 성실함을 쌓아가요.</p></div><span className="badge">차근 · 나의 공부 공간</span></section>
    {authenticated&&session?<>
     <div className="account-strip"><span>{session.user.email}</span><button className="small" onClick={()=>void logout()}>로그아웃</button></div>
-    {now&&<StudyDashboard key={session.user.id} userId={session.user.id} tab={tab} now={now.getTime()} profileUser={session.user} onProfileSaved={updateProfileUser} appearance={{dark,accent,font}} onAppearanceTheme={setAppearanceTheme} onAppearanceAccent={setAppearanceAccent} onAppearanceFont={setAppearanceFont}/>}
+    {now&&<StudyDashboard key={session.user.id} userId={session.user.id} tab={tab} now={now.getTime()} profileUser={session.user} onProfileSaved={updateProfileUser} onUnreadCountChange={setUnreadCount} appearance={{dark,accent,font}} onAppearanceTheme={setAppearanceTheme} onAppearanceAccent={setAppearanceAccent} onAppearanceFont={setAppearanceFont}/>}
    </>:<div className="grid auth-layout">
     <section className="hero"><p>지금 이 순간</p><div className="clock">{now?new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}).format(now):'--:--'}</div><p>{now?`${studyDay(now)} 학습일`:'한국 시간 기준'}</p><div className="hero-note">새벽의 노력도 어제의 기록에.<br/>하루는 오전 6시에 새롭게 시작해요.</div></section>
     <section className="card auth-card"><p className="eyebrow">MY ACCOUNT</p><h2>{mode==='signup'?'새 계정 만들기':mode==='forgot'?'비밀번호 찾기':mode==='recovery'?'새 비밀번호 설정':'나의 공부 공간에 로그인'}</h2>

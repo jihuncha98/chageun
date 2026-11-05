@@ -6,6 +6,8 @@ import {studyDay} from '../lib/study-day';
 import {kstClockSeconds,kstDateLabel} from '../lib/kst-clock';
 import {type Appearance,type Accent,type FontChoice} from '../lib/appearance';
 import ExamPlanning from './exam-planning';
+import AssessmentView,{AssessmentNotifications} from './assessment-view';
+import {assessmentNotices} from '../lib/assessments';
 import FriendsView from './friends-view';
 import GroupsView from './groups-view';
 import StudyStatistics from './study-statistics';
@@ -20,7 +22,7 @@ const colors=['#2563eb','#7c3aed','#0891b2','#dc7a14','#d64778','#14865a'];
 function field(f:FormData,key:string){return String(f.get(key)??'');}
 function download(name:string,value:unknown){const a=document.createElement('a');const u=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 type AppearanceControls={appearance:Appearance;onAppearanceTheme:(dark:boolean)=>void;onAppearanceAccent:(accent:Accent)=>void;onAppearanceFont:(font:FontChoice)=>void};
-type ProfileControls={profileUser:User;onProfileSaved:(user:User)=>void};
+type ProfileControls={profileUser:User;onProfileSaved:(user:User)=>void;onUnreadCountChange:(count:number)=>void};
 export default function StudyDashboard({userId,tab,now,...controls}:{userId:string;tab:string;now:number}&AppearanceControls&ProfileControls){
  const [store,setStore]=useState<StudyStore|null>(null);
  // The store owns external subscriptions and must be created and disposed together.
@@ -30,6 +32,8 @@ export default function StudyDashboard({userId,tab,now,...controls}:{userId:stri
 }
 export function Dashboard({store,tab,now,profileUser,onProfileSaved,...appearanceControls}:{store:StudyStore;tab:string;now:number}&AppearanceControls&ProfileControls){
  const v=useSyncExternalStore(store.subscribe,store.get,()=>initialView);const s=v.data;
+ const unreadNotices=assessmentNotices(s.assessments,now).filter(n=>!s.noticeReceipts.some(r=>!r.deleted_at&&r.noticeId===n.id)).length;
+ useEffect(()=>{controls.onUnreadCountChange(unreadNotices);},[controls.onUnreadCountChange,unreadNotices]);
  const [selected,setSelected]=useState<string|null>(null);const day=selected??studyDay(new Date(now));
  const [editing,setEditing]=useState<Task|null>(null);const [entryEdit,setEntryEdit]=useState<Entry|null>(null);const [manual,setManual]=useState(false);const [editorTab,setEditorTab]=useState('');const [entryError,setEntryError]=useState('');const [choices,setChoices]=useState<Record<string,'local'|'remote'>>({});const [uiError,setUiError]=useState('');
  const [device,setDevice]=useState('');
@@ -105,7 +109,7 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,...appearanc
 
  {recordEditor}
  <section className="card below"><h2>오늘 학교 시간표</h2><p>수업 안내이며 순공 시간으로 자동 합산되지 않아요.</p><div className="school-list">{scheduled.list.map(l=><div key={l.id} className={l.id===scheduled.current?.id?'current':''}><time>{l.start}–{l.end}</time><strong>{l.label}</strong><span>{l.room}</span></div>)}</div></section>
- </>:tab==='시험 대비'?<ExamPlanning data={s} write={write} busy={v.busy} now={now}/>:tab==='통계'?<><StudyStatistics data={s} now={now} review={v.review||!!v.remote} pending={v.pending} busy={v.busy} onEditEntry={showEntryEditor} onStopEntry={e=>void write(d=>{const x=d.entries.find(x=>x.id===e.id);if(x&&x.end===null)x.end=Date.now();})} onDeleteEntry={e=>{if(confirm('이 기록을 휴지통으로 옮길까요? 순공 시간에서 제외됩니다.'))void write(d=>{const x=d.entries.find(x=>x.id===e.id);if(x){x.end=x.end??Date.now();x.deleted_at=new Date().toISOString();}});}}/>{recordEditor}</>:tab==='설정'?<><ProfileSettings key={profileUser.id} user={profileUser} onSaved={onProfileSaved}/><Settings data={s} write={write} importWrite={importWrite} getSaveError={()=>store.get().error||store.get().status} busy={v.busy} onBackup={()=>download(`chageun-backup-${new Date(now+9*3600000).toISOString().slice(0,10)}.json`,{format:'chageun-data-export-v1',exportedAt:new Date(now).toISOString(),syncStatus:v.status,data:store.getLocal()?.work??s})} {...appearanceControls}/></>:tab==='친구'?<FriendsView now={now}/>:tab==='그룹'?<GroupsView now={now}/>:<section className="card"><h2>메뉴를 찾을 수 없어요</h2><p>다른 메뉴를 선택해 주세요.</p></section>}
+ </>:tab==='시험 대비'?<ExamPlanning data={s} write={write} busy={v.busy} now={now}/>:tab==='수행평가'?<AssessmentView data={s} write={write} busy={v.busy} now={now}/>:tab==='알림'?<AssessmentNotifications data={s} write={write} busy={v.busy} now={now}/>:tab==='통계'?<><StudyStatistics data={s} now={now} review={v.review||!!v.remote} pending={v.pending} busy={v.busy} onEditEntry={showEntryEditor} onStopEntry={e=>void write(d=>{const x=d.entries.find(x=>x.id===e.id);if(x&&x.end===null)x.end=Date.now();})} onDeleteEntry={e=>{if(confirm('이 기록을 휴지통으로 옮길까요? 순공 시간에서 제외됩니다.'))void write(d=>{const x=d.entries.find(x=>x.id===e.id);if(x){x.end=x.end??Date.now();x.deleted_at=new Date().toISOString();}});}}/>{recordEditor}</>:tab==='설정'?<><ProfileSettings key={profileUser.id} user={profileUser} onSaved={onProfileSaved}/><Settings data={s} write={write} importWrite={importWrite} getSaveError={()=>store.get().error||store.get().status} busy={v.busy} onBackup={()=>download(`chageun-backup-${new Date(now+9*3600000).toISOString().slice(0,10)}.json`,{format:'chageun-data-export-v1',exportedAt:new Date(now).toISOString(),syncStatus:v.status,data:store.getLocal()?.work??s})} {...appearanceControls}/></>:tab==='친구'?<FriendsView now={now}/>:tab==='그룹'?<GroupsView now={now}/>:<section className="card"><h2>메뉴를 찾을 수 없어요</h2><p>다른 메뉴를 선택해 주세요.</p></section>}
  </div>
  </>;
 }
@@ -147,6 +151,6 @@ function Settings({data:s,write,importWrite,getSaveError,busy,onBackup,appearanc
    finally{input.value='';}
   }}/>
  </label>{importNotice&&<p role="status" className="notice">{importNotice}</p>}{error&&<p role="alert" className="notice error">{error}</p>}</section>
- <section className="card below"><h2>내 데이터 백업</h2><p>공부 기록, 할 일, 시간표, 시험 계획을 현재 기기 기준 JSON 파일로 내려받아요. 동기화 대기 중이라면 서버에 없는 기록도 파일에 포함될 수 있어요.</p><button className="small blue" onClick={onBackup}>JSON 백업 내려받기</button><p className="fine">백업 파일에는 개인 공부 정보가 담겨 있으니 타인에게 공유하지 마세요. 현재 웹앱에서는 이 파일을 직접 불러오는 복구 기능을 제공하지 않아요.</p></section>
- <section className="card below"><h2>휴지통 · 복구</h2><p>휴지통에 있는 기록을 되살릴 수 있어요. 7일 후 자동 완전 삭제는 아직 적용되지 않았어요.</p>{(['tasks','entries','lessons','exams'] as const).map(key=>s[key].filter(r=>r.deleted_at).map(r=><div className="record-row" key={r.id}><span>{key==='tasks'?(r as Task).title:key==='lessons'?(r as Lesson).label:key==='exams'?(r as {name:string}).name:`공부 기록 ${clock((r as Entry).start)}`}</span><button className="small" disabled={busy} onClick={()=>write(d=>{d[key].find(x=>x.id===r.id)!.deleted_at=null;})}>복구</button></div>))}</section></>;
+ <section className="card below"><h2>내 데이터 백업</h2><p>공부 기록, 할 일, 시간표, 시험 및 수행평가 계획을 현재 기기 기준 JSON 파일로 내려받아요. 동기화 대기 중이라면 서버에 없는 기록도 파일에 포함될 수 있어요.</p><button className="small blue" onClick={onBackup}>JSON 백업 내려받기</button><p className="fine">백업 파일에는 개인 공부 정보가 담겨 있으니 타인에게 공유하지 마세요. 현재 웹앱에서는 이 파일을 직접 불러오는 복구 기능을 제공하지 않아요.</p></section>
+ <section className="card below"><h2>휴지통 · 복구</h2><p>휴지통에 있는 기록을 되살릴 수 있어요. 7일 후 자동 완전 삭제는 아직 적용되지 않았어요.</p>{(['tasks','entries','lessons','exams','assessments'] as const).map(key=>s[key].filter(r=>r.deleted_at).map(r=><div className="record-row" key={r.id}><span>{key==='tasks'?(r as Task).title:key==='lessons'?(r as Lesson).label:key==='exams'?(r as {name:string}).name:key==='assessments'?(r as {title:string}).title:`공부 기록 ${clock((r as Entry).start)}`}</span><button className="small" disabled={busy} onClick={()=>write(d=>{d[key].find(x=>x.id===r.id)!.deleted_at=null;})}>복구</button></div>))}</section></>;
 }
