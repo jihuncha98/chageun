@@ -1,0 +1,396 @@
+/* CHAGEUN 2.1 / workspace-wide UI refresh
+   Based on the 5b05533 layout and the user's Today UI reference.
+   Presentation only. No study data, auth, RPC or timer logic is touched.
+   Existing Today dashboard + focus mode retain their own styling.
+*/
+
+/* --- Shared interface: restrained chrome, compact structure --- */
+.app {
+  --ui-card-radius: 19px;
+  --ui-gap: 16px;
+  --ui-soft-shadow: 0 8px 27px rgb(43 74 132 / 5%);
+}
+.app main { padding-bottom: 36px; }
+.app main > header { min-height: 32px; padding: 0; border: 0; }
+.app main > header > span { display: none; } /* redundant English breadcrumb */
+.app main > header > .quiet { margin-left: auto; min-height: 35px; }
+.app .heading { margin: 7px 0 14px; min-height: 44px; }
+.app .heading h1 { margin: 0; font-weight: 790; font-size: clamp(24px, 2.3vw, 31px); }
+.app .heading .eyebrow,
+.app .heading > div > p:not(.eyebrow),
+.app .heading > .badge { display: none; } /* duplicate slogans / intro lines */
+.app .account-strip { margin-bottom: 6px; }
+.app .account-strip > span { display: none; } /* email belongs in account settings */
+.app .account-strip .small { border: 0; background: transparent; box-shadow: none; }
+.app footer { opacity: .65; padding-top: 21px; }
+.app .sync-strip { justify-content: flex-end; margin: 1px 0 11px; min-height: 30px; }
+.app .sync-strip > span:not(.pending) { display: none; } /* retain pending warnings */
+.app .sync-strip > span.pending { font-size: 12px; }
+.app .sync-strip > button.small { padding: 6px 10px; min-height: 30px; font-size: 11px; }
+
+.app .workspace-tab-content:not(.chageun-today) {
+  min-width: 0;
+  animation: chageun-content-in .22s ease-out;
+}
+@keyframes chageun-content-in {
+  from { opacity: .35; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.app .workspace-tab-content:not(.chageun-today) > .card,
+.app .workspace-tab-content:not(.chageun-today) > :is(.friends-view,.groups-view,.exam-section,.assessments-view,.statistics-view,.notifications-view) .card,
+.app .admin-panel .card {
+  border: 1px solid var(--line);
+  border-radius: var(--ui-card-radius);
+  background: var(--panel);
+  box-shadow: var(--ui-soft-shadow);
+  padding: clamp(18px, 2vw, 25px);
+  min-width: 0;
+}
+.app .workspace-tab-content:not(.chageun-today) .card.below,
+.app .admin-panel .card.below { margin-top: 0; }
+.app .workspace-tab-content:not(.chageun-today) .card h2,
+.app .admin-panel .card h2 {
+  font-size: clamp(16px, 1.5vw, 19px);
+  font-weight: 760;
+  letter-spacing: -.045em;
+  line-height: 1.35;
+  margin: 0 0 13px;
+}
+.app .workspace-tab-content:not(.chageun-today) .section-title {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin: 0 0 12px;
+}
+.app .workspace-tab-content:not(.chageun-today) .section-title h2 { margin: 0; }
+.app .workspace-tab-content:not(.chageun-today) .section-title > span { font-size: 11px; color: var(--muted); }
+.app .workspace-tab-content:not(.chageun-today) .eyebrow { display: none; }
+.app .workspace-tab-content:not(.chageun-today) .card h3 {
+  font-size: 14px; font-weight: 720;
+}
+.app .workspace-tab-content:not(.chageun-today) .card label {
+  font-size: 12px; font-weight: 630; color: var(--muted);
+}
+.app .workspace-tab-content:not(.chageun-today) :is(input,select,textarea) {
+  background: var(--bg); border-color: var(--line); border-radius: 11px;
+  font-size: 13px; padding: 11px 13px;
+}
+.app .workspace-tab-content:not(.chageun-today) input { min-height: 42px; }
+.app .workspace-tab-content:not(.chageun-today) :is(.small,.primary.compact) {
+  min-height: 36px; padding: 8px 12px; font-size: 12px;
+  border-radius: 10px; width: auto; white-space: nowrap;
+}
+.app .workspace-tab-content:not(.chageun-today) .primary.compact {
+  font-weight: 730; box-shadow: none; margin-top: 0;
+}
+.app .workspace-tab-content:not(.chageun-today) .record-row {
+  padding: 12px 0; gap: 12px; min-height: 51px;
+}
+.app .workspace-tab-content:not(.chageun-today) .record-row strong { font-size: 13px; }
+.app .workspace-tab-content:not(.chageun-today) .record-row p { margin: 3px 0 0; font-size: 11px; }
+.app .workspace-tab-content:not(.chageun-today) .actions { gap: 7px; }
+.app .workspace-tab-content:not(.chageun-today) .notice { line-height: 1.6; }
+.app .workspace-tab-content:not(.chageun-today) :is(.error,.attention,[role='alert']) {
+  display: block; /* Safety / sync errors must remain visible. */
+}
+
+/* --- Friend dashboard: code + nickname + share, add, ranking, contacts --- */
+.app .friends-view {
+  display: grid;
+  grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr);
+  gap: var(--ui-gap);
+  align-items: start;
+}
+.app .friends-view > section.card { min-width: 0; margin: 0; }
+.app .friends-view > section.card:first-child,
+.app .friends-view > section.card:last-child { grid-column: 1 / -1; }
+.app .friends-view > section.card:first-child > p:not(.notice):not([role]),
+.app .friends-view .friend-code-panel > p,
+.app .friends-view .friend-share-strip p,
+.app .friends-view > section.card:has(.friend-rank-row) > p:not(.notice),
+.app .friends-view > section.card:last-child > p.fine,
+.app .friends-view .friend-requests .record-row p { display: none; }
+.app .friends-view .friend-profile-grid {
+  display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+  gap: 13px; align-items: stretch; margin-top: 8px;
+}
+.app .friends-view .friend-code-panel {
+  display: flex; flex-wrap: wrap; gap: 9px 12px;
+  align-content: center; align-items: center;
+  background: linear-gradient(125deg, var(--accent-soft), var(--bg));
+  border: 1px solid var(--accent-border);
+  border-radius: 15px; padding: 16px 19px;
+}
+.app .friends-view .friend-code-panel .eyebrow {
+  display: block !important; width: 100%; margin: 0;
+  color: var(--accent-strong); font-size: 10px; letter-spacing: .1em;
+}
+.app .friends-view .friend-code-panel strong {
+  display: block; min-width: 0;
+  font-size: clamp(16px, 1.7vw, 22px); font-weight: 830;
+  letter-spacing: .06em; font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.app .friends-view .friend-code-panel button {
+  margin-left: auto; background: var(--panel); color: var(--text);
+}
+.app .friends-view .friend-profile-grid form {
+  display: flex; align-items: flex-end; gap: 10px; margin: 0;
+}
+.app .friends-view .friend-profile-grid form label { flex: 1; margin: 0; }
+.app .friends-view .friend-profile-grid form button { flex: none; margin-bottom: 1px; }
+.app .friends-view .friend-share-strip {
+  margin-top: 13px; padding: 12px 15px; border-radius: 13px;
+  border: 1px solid var(--line); background: var(--bg);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.app .friends-view .friend-share-strip strong { font-size: 13px; }
+.app .friends-view .friend-share-strip button { margin: 0; flex-shrink: 0; }
+.app .friends-view .friend-code-form { display: flex; align-items: flex-end; gap: 10px; }
+.app .friends-view .friend-code-form label { margin: 0; flex: 1; }
+.app .friends-view .friend-code-form button { flex: none; margin-bottom: 1px; }
+.app .friends-view .friend-requests { margin-top: 15px; border-top: 1px solid var(--line); padding-top: 10px; }
+.app .friends-view .friend-requests h3 { margin: 10px 0 4px; }
+.app .friends-view .friend-rank-row { padding: 13px 7px; }
+.app .friends-view .friend-rank-row:first-of-type { border-radius: 12px 12px 0 0; }
+.app .friends-view .friend-rank-number { min-width: 43px; font-size: 13px; font-weight: 780; }
+.app .friends-view .friend-rank-user strong { font-size: 13px; }
+.app .friends-view .friend-rank-user :is(span,small) { font-size: 11px; }
+.app .friends-view .friend-rank-time { font-size: 17px; font-weight: 840; color: var(--accent-strong); font-variant-numeric: tabular-nums; }
+.app .friends-view .friend-self { background: var(--accent-soft); border-radius: 11px; }
+.app .friends-view .empty { padding: 18px 0; }
+
+/* --- Group dashboard: creation + invitations + concise member cards --- */
+.app .groups-view {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-gap); align-items: start;
+}
+.app .groups-view > :is(section.card,div) { min-width: 0; margin: 0; }
+.app .groups-view > section.card:first-child,
+.app .groups-view > section.card:has(.group-picker),
+.app .groups-view > section.card:has(.group-create-form),
+.app .groups-view > section.card:has(.group-pending) { grid-column: 1 / -1; }
+.app .groups-view > section.card:first-child > p:not([role]):not(.notice),
+.app .groups-view > section.card:first-child > p.fine,
+.app .groups-view > section.card:has(.group-rank-list) > p:not(.notice) { display: none; }
+.app .groups-view .group-create-form {
+  display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 10px;
+}
+.app .groups-view .group-create-form label { flex: 1 1 180px; margin: 0; }
+.app .groups-view .group-create-form button { margin: 0; }
+.app .groups-view .group-picker {
+  display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr));
+  gap: 10px; margin-top: 8px;
+}
+.app .groups-view .group-picker-button {
+  border: 1px solid var(--line); border-radius: 13px; padding: 14px 16px;
+  min-height: 75px; background: var(--bg); box-shadow: none;
+}
+.app .groups-view .group-picker-button[aria-pressed='true'] {
+  border: 1px solid var(--accent); background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  padding: 14px 16px;
+}
+.app .groups-view .group-picker-button strong { font-size: 14px; }
+.app .groups-view .group-picker-button small { font-size: 11px; }
+.app .groups-view .group-rank-list { margin-top: 7px; max-height: 560px; overflow: auto; scrollbar-width: thin; }
+.app .groups-view .friend-rank-row { padding: 13px 5px; }
+.app .groups-view .friend-rank-number { min-width: 39px; font-size: 12px; }
+.app .groups-view .friend-rank-user strong { font-size: 13px; }
+.app .groups-view .friend-rank-user :is(span,small) { font-size: 11px; }
+.app .groups-view .friend-rank-time { font-size: 16px; font-weight: 820; font-variant-numeric: tabular-nums; color: var(--accent-strong); }
+.app .groups-view .group-invite-form { margin-top: 14px; padding-top: 14px; }
+.app .groups-view .group-invite-form :is(input,button) { max-width: 100%; }
+.app .groups-view .group-pending { margin-top: 12px; }
+.app .groups-view .record-row { padding: 11px 0; }
+.app .groups-view .record-pagination { margin-top: 13px; }
+
+/* --- Exams: dense countdown + monthly calendar side by side --- */
+.app .exam-section {
+  display: grid; grid-template-columns: minmax(0,.88fr) minmax(0,1.12fr);
+  gap: var(--ui-gap); align-items: start;
+}
+.app .exam-section > section.card { min-width: 0; margin: 0; }
+.app .exam-section > section.card:nth-child(n+3) { grid-column: 1 / -1; }
+.app .exam-section .section-title > span,
+.app .exam-section > section.card > p.fine { display: none; }
+.app .exam-section .exam-row { padding: 11px 0; gap: 10px; }
+.app .exam-section .exam-details strong { font-size: 13px; }
+.app .exam-section .exam-details p { margin: 3px 0 0; font-size: 11px; }
+.app .exam-section .exam-d-day { font-size: 22px; letter-spacing: -.03em; }
+.app .exam-section .exam-form { margin-top: 14px; padding-top: 12px; }
+.app .exam-section .exam-form h3 { margin: 0 0 8px; }
+.app .exam-section .exam-form-grid { gap: 10px; }
+.app .exam-section .exam-form label { margin-top: 4px; }
+.app .exam-section .calendar-toolbar { margin: 8px 0 11px; }
+.app .exam-section .calendar-grid { gap: 5px; }
+.app .exam-section .calendar-day,.app .exam-section .calendar-empty { min-height: 63px; }
+.app .exam-section .calendar-day {
+  padding: 8px; border-radius: 9px; gap: 3px; background: var(--bg);
+  transition: background .12s, border-color .12s;
+}
+.app .exam-section .calendar-day.chosen { background: var(--accent-soft); border-color: var(--accent); padding: 7px; }
+.app .exam-section .calendar-day .calendar-number { font-size: 12px; }
+.app .exam-section .calendar-day .calendar-exam-mark { font-size: 9px; padding: 2px 5px; }
+.app .exam-section .calendar-day .calendar-plan-count { font-size: 9px; }
+.app .exam-section .weekday-heading { padding: 5px 0; }
+.app .exam-section .plan-row { padding: 10px 0; }
+
+/* --- Assessments: list on the left, inline input panel on the right --- */
+.app .assessments-view {
+  display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,.8fr);
+  gap: var(--ui-gap); align-items: start;
+}
+.app .assessments-view > section.card { margin: 0; min-width: 0; }
+.app .assessments-view .section-title > span,
+.app .assessments-view > section.card > p.fine { display: none; }
+.app .assessments-view .assessment-list { margin-top: 8px; }
+.app .assessments-view .assessment-row { padding: 12px 0; gap: 10px; }
+.app .assessments-view .assessment-main { gap: 5px; }
+.app .assessments-view .assessment-main strong { font-size: 13px; }
+.app .assessments-view .assessment-day { font-size: 18px; }
+.app .assessments-view .assessment-actions { gap: 5px; }
+.app .assessments-view .assessment-check { width: 31px; height: 31px; font-size: 17px; }
+.app .assessments-view .assessment-form-grid { gap: 9px; }
+.app .assessments-view .card form label { margin-top: 10px; }
+
+/* --- Statistics: important totals first, compact readable visualizations --- */
+.app .statistics-view { display: grid; gap: var(--ui-gap); }
+.app .statistics-view > section.card { margin: 0; }
+.app .statistics-view .section-title > div > p:not([role]),
+.app .statistics-view .section-title > span.fine,
+.app .statistics-view > section.card > p.fine { display: none; }
+.app .statistics-view .stats-overview { gap: 12px; margin-top: 14px; }
+.app .statistics-view .stats-overview > div {
+  padding: 19px; border-radius: 15px;
+  border: 1px solid var(--line);
+  background: linear-gradient(138deg,var(--bg),var(--panel));
+  min-width: 0;
+}
+.app .statistics-view .stats-overview span { font-size: 12px; font-weight: 710; }
+.app .statistics-view .stats-overview strong { font-size: clamp(17px,1.9vw,25px); font-variant-numeric: tabular-nums; }
+.app .statistics-view .stats-chart-scroller { scrollbar-width: thin; }
+.app .statistics-view .stats-bar-track { border-radius: 10px; }
+.app .statistics-view .stats-day.selected { border-color: var(--accent); background: var(--accent-soft); }
+.app .statistics-view .stats-bottom { gap: 16px; }
+.app .statistics-view .stats-bottom > .below { margin-top: 0; }
+.app .statistics-view .record-pagination { margin-top: 14px; }
+
+/* --- Notifications, settings and administration --- */
+.app .notifications-view .section-title > span,
+.app .notifications-view > .card > p.fine { display: none; }
+.app .notifications-view .assessment-notice { padding: 13px 0; }
+.app .notifications-view .assessment-notice p { font-size: 12px; margin: 3px 0; }
+.app .notifications-view + :is(.card,.admin-notices) { margin-top: var(--ui-gap); }
+.app .workspace-tab-content:has(.appearance-settings) {
+  display: grid; grid-template-columns: repeat(2,minmax(0,1fr));
+  align-items: start; gap: var(--ui-gap);
+}
+.app .workspace-tab-content:has(.appearance-settings) > section.card { margin: 0; min-width: 0; }
+.app .workspace-tab-content:has(.appearance-settings) > section.card:has(.school-list),
+.app .workspace-tab-content:has(.appearance-settings) > section.card:has(input[type='file']) { grid-column: 1 / -1; }
+.app .profile-settings > p:not(.notice):not(.profile-preview):not(.eyebrow),
+.app .appearance-settings > p:not(.notice):not(.eyebrow),
+.app .appearance-settings .appearance-group > p.fine,
+.app .workspace-tab-content:has(.appearance-settings) > section.card:nth-of-type(3) > p:not([role]):not(.notice) { display: none; } /* only the school-schedule intro; keep backup/trash cautions */
+.app .profile-settings form { max-width: none; }
+.app .profile-settings label { margin-top: 6px; }
+.app .profile-settings .profile-preview { font-size: 11px; margin: 9px 0 12px; }
+.app .profile-settings > button:last-child {
+  margin-top: 15px; border-color: #f4c8ce;
+  color: #a5384b; background: transparent;
+}
+.app .appearance-settings .appearance-group { margin-top: 12px; padding-top: 12px; }
+.app .appearance-settings .appearance-group h3 { margin-bottom: 9px; }
+.app .appearance-settings .appearance-button-group,
+.app .appearance-settings .appearance-color-choices { gap: 7px; }
+.app .appearance-settings .appearance-color-option { padding: 8px 11px; }
+.app .workspace-tab-content:has(.appearance-settings) .record-row { padding: 9px 0; }
+.app .admin-panel .admin-list { gap: 10px; margin-top: 12px; }
+.app .admin-panel .admin-item { padding: 15px; border-radius: 13px; background: var(--bg); }
+.app .admin-panel .admin-tabs { margin: 6px 0 14px; }
+.app .admin-panel .admin-actions { gap: 7px; }
+.app .admin-panel .admin-member { padding: 10px 0; }
+
+/* --- Reusable compact blocks; keep error, pending and data states visible --- */
+.app .workspace-tab-content:not(.chageun-today) .empty {
+  font-size: 12px; text-align: center; color: var(--muted); padding: 22px 0;
+}
+.app .workspace-tab-content:not(.chageun-today) .record-pagination button {
+  flex: none; white-space: nowrap;
+}
+.app .workspace-tab-content:not(.chageun-today) :is(.friend-rank-row,.exam-row,.assessment-row,.plan-row) {
+  border-bottom-color: var(--line);
+}
+.app .workspace-tab-content:not(.chageun-today) :is(button,input,textarea,select) { max-width: 100%; }
+.app .workspace-tab-content:not(.chageun-today) button:focus-visible,
+.app .workspace-tab-content:not(.chageun-today) a:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+/* --- Dark themes: no hard-coded white panels --- */
+.app.dark .friends-view .friend-code-panel {
+  background: linear-gradient(125deg,var(--accent-soft),var(--panel));
+}
+.app.dark .friends-view .friend-share-strip,
+.app.dark .groups-view .group-picker-button,
+.app.dark .exam-section .calendar-day,
+.app.dark .statistics-view .stats-overview > div,
+.app.dark .admin-panel .admin-item { background: var(--bg); }
+.app.dark .groups-view .group-picker-button[aria-pressed='true'],
+.app.dark .exam-section .calendar-day.chosen,
+.app.dark .statistics-view .stats-day.selected { background: var(--accent-soft); color: var(--text); }
+.app.dark .friends-view .friend-rank-time,
+.app.dark .groups-view .friend-rank-time,
+.app.dark .friends-view .friend-code-panel .eyebrow { color: var(--accent-mid); }
+
+/* --- Tablet and mobile; no horizontal clipping, preserve touch targets --- */
+@media (max-width: 1190px) {
+  .app .friends-view,.app .groups-view,.app .exam-section,.app .assessments-view,
+  .app .workspace-tab-content:has(.appearance-settings) {
+    grid-template-columns: minmax(0,1fr);
+  }
+  .app .friends-view > section.card,
+  .app .groups-view > section.card,
+  .app .exam-section > section.card,
+  .app .assessments-view > section.card,
+  .app .workspace-tab-content:has(.appearance-settings) > section.card { grid-column: 1 / -1; }
+  .app .friends-view .friend-profile-grid { grid-template-columns: minmax(0,1.1fr) minmax(0,.9fr); }
+}
+@media (max-width: 850px) {
+  .app .friends-view .friend-profile-grid { grid-template-columns: 1fr; }
+  .app .statistics-view .stats-overview { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 640px) {
+  .app main { padding-bottom: 100px; }
+  .app main > header { min-height: 31px; }
+  .app main > header > .quiet { font-size: 11px; }
+  .app .heading { margin: 7px 0 10px; min-height: 38px; }
+  .app .heading h1 { font-size: 25px; }
+  .app .workspace-tab-content:not(.chageun-today) > .card,
+  .app .workspace-tab-content:not(.chageun-today) > :is(.friends-view,.groups-view,.exam-section,.assessments-view,.statistics-view,.notifications-view) .card {
+    padding: 17px 15px; border-radius: 16px;
+  }
+  .app .friends-view,.app .groups-view,.app .exam-section,.app .assessments-view,
+  .app .statistics-view,.app .workspace-tab-content:has(.appearance-settings) { gap: 11px; }
+  .app .friends-view .friend-code-panel { padding: 15px; }
+  .app .friends-view .friend-code-panel strong { font-size: 16px; letter-spacing: .03em; }
+  .app .friends-view .friend-profile-grid form,
+  .app .friends-view .friend-code-form { flex-wrap: wrap; }
+  .app .friends-view .friend-profile-grid form button,
+  .app .friends-view .friend-code-form button { margin: 0; }
+  .app .groups-view .group-picker { grid-template-columns: repeat(auto-fill,minmax(min(100%,145px),1fr)); }
+  .app .exam-section .calendar-day,.app .exam-section .calendar-empty { min-height: 56px; }
+  .app .exam-section .calendar-day { padding: 6px; }
+  .app .exam-section .calendar-day.chosen { padding: 5px; }
+  .app .exam-section .calendar-day .calendar-plan-count { font-size: 8px; }
+  .app .exam-section .calendar-day .calendar-exam-mark { font-size: 8px; }
+  .app .assessments-view .assessment-row { flex-wrap: wrap; }
+  .app .assessments-view .assessment-actions { margin-left: auto; }
+  .app .statistics-view .stats-overview > div { padding: 12px; }
+  .app .statistics-view .stats-overview strong { font-size: 17px; }
+  .app .friends-view .friend-rank-time,
+  .app .groups-view .friend-rank-time { font-size: 13px; }
+  .app .workspace-tab-content:not(.chageun-today) button.small { min-height: 34px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app .workspace-tab-content:not(.chageun-today) { animation: none; }
+}
