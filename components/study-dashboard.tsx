@@ -30,10 +30,10 @@ export default function StudyDashboard({userId,tab,now,...controls}:{userId:stri
  useEffect(()=>{const s=createStudyStore(userId);setStore(s);s.start();return()=>s.destroy();},[userId]); // store is owned by this authenticated mount
  return store?<Dashboard store={store} tab={tab} now={now} {...controls}/>:<section className="card">공부 공간을 연결하고 있어요…</section>;
 }
-export function Dashboard({store,tab,now,profileUser,onProfileSaved,...appearanceControls}:{store:StudyStore;tab:string;now:number}&AppearanceControls&ProfileControls){
+export function Dashboard({store,tab,now,profileUser,onProfileSaved,onUnreadCountChange,...appearanceControls}:{store:StudyStore;tab:string;now:number}&AppearanceControls&ProfileControls){
  const v=useSyncExternalStore(store.subscribe,store.get,()=>initialView);const s=v.data;
  const unreadNotices=assessmentNotices(s.assessments,now).filter(n=>!s.noticeReceipts.some(r=>!r.deleted_at&&r.noticeId===n.id)).length;
- useEffect(()=>{controls.onUnreadCountChange(unreadNotices);},[controls.onUnreadCountChange,unreadNotices]);
+ useEffect(()=>{onUnreadCountChange(unreadNotices);},[onUnreadCountChange,unreadNotices]);
  const [selected,setSelected]=useState<string|null>(null);const day=selected??studyDay(new Date(now));
  const [editing,setEditing]=useState<Task|null>(null);const [entryEdit,setEntryEdit]=useState<Entry|null>(null);const [manual,setManual]=useState(false);const [editorTab,setEditorTab]=useState('');const [entryError,setEntryError]=useState('');const [choices,setChoices]=useState<Record<string,'local'|'remote'>>({});const [uiError,setUiError]=useState('');
  const [device,setDevice]=useState('');
