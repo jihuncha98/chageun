@@ -28,7 +28,15 @@ export default function AdminPanel(){
   if(rpcError)throw rpcError;
   setData((result??EMPTY) as Overview);
  },[]);
- useEffect(()=>{let alive=true;void refresh().catch(e=>{if(alive)setError(readable(e));}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[refresh]);
+ useEffect(()=>{
+  let alive=true;
+  // Schedule the initial load rather than synchronously dispatching state updates inside an effect.
+  // This also prevents a scheduled request from starting after the component is unmounted.
+  const timer=setTimeout(()=>{
+   void refresh().catch(e=>{if(alive)setError(readable(e));}).finally(()=>{if(alive)setLoading(false);});
+  },0);
+  return()=>{alive=false;clearTimeout(timer);};
+ },[refresh]);
  async function act(fn:string,args:Record<string,unknown>,done:string){
   if(!supabase||busy)return;
   if(reason.trim().length<2){setError('먼저 조치 사유를 두 글자 이상 입력해 주세요.');return;}
