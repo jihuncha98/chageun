@@ -15,8 +15,8 @@ export default function StudyStatistics({userId,data,now,review,pending,busy,onE
  const [selected,setSelected]=useState<string|null>(null);
  const [recordPage,setRecordPage]=useState(1);
  const [recordDate,setRecordDate]=useState('');
- // Phase 2 is READ-ONLY. The SQL preview table is rebuilt from entries on each save.
- // Do not remove old entries until a separate immutable archive and offline-safety migration exists.
+ // Phase 3 is READ-ONLY: verified durable statistics created in 1.12.
+ // Old measurement entries must NOT be deleted before an explicit cutover and offline-safety migration.
  const [rollupState,setRollupState]=useState<{source:Study;rows:SavedStudyRollup[]}|null>(null);
  const [rollupError,setRollupError]=useState('');
  const currentStudyDay=studyDay(new Date(now));
@@ -29,7 +29,7 @@ export default function StudyStatistics({userId,data,now,review,pending,busy,onE
     const collected:unknown[]=[];
     // Supabase/PostgREST commonly caps one query at 1,000 rows. Paginate rather than truncate.
     for(let offset=0;offset<10000;offset+=1000){
-     const {data:rows,error}=await supabase.from('study_daily_rollup_preview')
+     const {data:rows,error}=await supabase.from('study_daily_rollup_durable')
       .select('study_day,subject_id,duration_ms').eq('user_id',userId)
       .gte('study_day',rollupQueryFrom(now)).lte('study_day',currentStudyDay)
       .order('study_day',{ascending:true}).order('subject_id',{ascending:true})
@@ -67,8 +67,8 @@ export default function StudyStatistics({userId,data,now,review,pending,busy,onE
   <section className="card">
    <div className="section-title"><div><h2>공부 통계</h2><p>한국 시간 오전 6시부터 다음 날 오전 6시까지를 하루로 계산해요.</p></div><div className="stats-range" role="group" aria-label="조회 기간"><button className="small" aria-pressed={range===7} onClick={()=>{setRange(7);setSelected(null);}}>최근 7일</button><button className="small" aria-pressed={range===30} onClick={()=>{setRange(30);setSelected(null);}}>최근 30일</button></div></div>
    {pending&&<p className="notice">아직 서버에 보내지 않은 기록이 있어요. 이 통계는 현재 기기 기준이에요.</p>}
-   {verified&&<p className="fine">서버 비교용 요약과 기존 기록의 날짜·과목별 값이 일치해요. 영구 보관·자동 삭제는 아직 적용되지 않았어요.</p>}
-   {!pending&&rollupState?.source===data&&!verified&&<p role="status" className="notice">서버 통계와 기존 기록이 달라 기존 기록으로 계산하고 있어요. 이전 측정 기록을 삭제하지 마세요.</p>}
+   {verified&&<p className="fine">영구 보존 통계와 현재 측정 기록의 날짜·과목별 값이 일치해요. 오래된 측정 기록의 자동 삭제는 아직 비활성화 상태예요.</p>}
+   {!pending&&rollupState?.source===data&&!verified&&<p role="status" className="notice">영구 보존 통계와 현재 측정 기록이 달라 기존 기록으로 계산하고 있어요. 과거 측정 기록을 삭제하지 마세요.</p>}
    {!pending&&rollupError&&<p role="status" className="notice">서버 통계를 확인하지 못해 기존 기록으로 표시하고 있어요. ({rollupError})</p>}
    {review?<p role="alert" className="notice error">겹치거나 충돌한 기록이 있어 통계 합계를 숨겼어요. 아래 측정 기록 목록에서 시간을 수정하거나 중복 기록을 휴지통으로 옮겨 주세요.</p>:<>
     <div className="stats-overview">
