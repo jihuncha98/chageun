@@ -38,17 +38,19 @@ export default function AdminPanel(){
   },0);
   return()=>{alive=false;clearTimeout(timer);};
  },[refresh]);
- async function act(fn:string,args:Record<string,unknown>,done:string){
+ async function act(fn:string,args:Record<string,unknown>,done:string,actionReason=reason,feedbackId=''){
+  setFeedbackUser(feedbackId);
   if(!supabase||busy)return;
-  if(reason.trim().length<2){setError('먼저 조치 사유를 두 글자 이상 입력해 주세요.');return;}
+  if(actionReason.trim().length<2){setError('먼저 조치 사유를 두 글자 이상 입력해 주세요.');return;}
   setBusy(true);setError('');setNotice('');
   try{
-   const {error:rpcError}=await supabase.rpc(fn,{...args,p_reason:reason.trim()});
+   const {error:rpcError}=await supabase.rpc(fn,{...args,p_reason:actionReason.trim()});
    if(rpcError)throw rpcError;
    await refresh();setNotice(done);setReason('');
   }catch(e){setError(readable(e));}
   finally{setBusy(false);}
  }
+ const [feedbackUser,setFeedbackUser]=useState('');
  const selectedUser=data.users.find(x=>x.id===selection);
  const filtered=data.users.filter(x=>`${x.nickname} ${x.displayName??''} ${x.friendCode??''} ${x.email??''}`.toLowerCase().includes(search.trim().toLowerCase()));
  return <div className="admin-panel">
@@ -64,12 +66,16 @@ export default function AdminPanel(){
       <div className="admin-item-details"><strong>{user.nickname}</strong>{user.isAdmin&&<span className="admin-status">전체 관리자</span>}<p>{user.email??'이메일 확인 불가'}</p><small>표시 이름 {user.displayName||'미설정'} · 친구 코드 {user.friendCode??'미설정'}</small></div>
       {!user.isAdmin&&<div className="admin-actions">
        <button className="small" disabled={busy || user.displayName===undefined} onClick={()=>{
+        setFeedbackUser(user.id);setNotice('');setError('');
+        const actionReason=reason.trim().length>=2?reason.trim():window.prompt('표시 이름을 변경하는 사유를 입력해 주세요. (2~150자)');
+        if(actionReason===null)return;
+        if(actionReason.trim().length<2||actionReason.trim().length>150){setError('조치 사유는 2~150자로 입력해 주세요.');return;}
         const value=window.prompt(`${user.email??user.nickname}님의 새 표시 이름을 입력해 주세요. (1~24자)`,user.displayName??'');
         if(value===null)return;
         const name=value.trim().replace(/\s+/g,' ');
         if(!name || name.length>24){setError('표시 이름은 1~24자로 입력해 주세요.');return;}
         if(window.confirm(`이 회원의 표시 이름을 「${name}」(으)로 변경할까요?`)){
-         void act('chageun_admin_set_display_name',{p_user:user.id,p_name:name,p_expected:user.displayName},'표시 이름을 수정했어요.');
+         void act('chageun_admin_set_display_name',{p_user:user.id,p_name:name,p_expected:user.displayName},`표시 이름을 「${name}」(으)로 수정했어요.`,actionReason,user.id);
         }
        }}>표시 이름 수정</button>
        <button className="small" disabled={busy} onClick={()=>{const value=window.prompt(`${user.nickname}님의 새 친구 별명을 입력해 주세요.`,user.nickname);if(value!==null&&window.confirm(`정말 ${user.nickname}님의 친구 별명을 「${value}」(으)로 변경할까요?`))void act('chageun_admin_set_nickname',{p_user:user.id,p_nickname:value},'친구 별명을 수정했어요.');}}>별명 수정</button>
@@ -81,6 +87,7 @@ export default function AdminPanel(){
         void act('chageun_delete_account',{p_user:user.id,p_email:email},'회원 계정을 삭제했어요.');
        }}>회원 영구 삭제</button>
       </div>}
+      {feedbackUser===user.id&&(error||notice)&&<p className="notice" role="status">{error||notice}</p>}
      </div>)}</div>
      {selectedUser&&!selectedUser.isAdmin&&<div className="admin-limit"><h3>{selectedUser.nickname} · 채팅 제한</h3><p>제한 시간 동안 모든 그룹에서 메시지 전송이 차단돼요.</p>
       <div className="admin-actions">{([5,30,60,1440,0] as const).map(n=><button key={n} className="small" disabled={busy} onClick={()=>{const label=n===0?'제한 해제':`${n>=60?n/60+'시간':n+'분'} 제한`;if(window.confirm(`${selectedUser.nickname}님에게 ${label} 조치를 적용할까요?`))void act('chageun_admin_chat_limit',{p_user:selectedUser.id,p_minutes:n},`${label}을(를) 적용했어요.`);}}>{n===0?'제한 해제':n===1440?'24시간':n===60?'1시간':`${n}분`}</button>)}</div>
