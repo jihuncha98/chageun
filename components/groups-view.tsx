@@ -1,4 +1,5 @@
 'use client';
+import GroupChat from './group-chat';
 import {useCallback,useEffect,useRef,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
 import {sharedStudyTime} from '../lib/live-board-time';
@@ -136,6 +137,7 @@ export default function GroupsView({now}:{now:number}){
      <button className="small" onClick={()=>changePage(pageCount)} disabled={busy||page===pageCount} aria-label="마지막 페이지">끝 »</button>
     </div>}
    </section>
+   <GroupChat key={group.id} groupId={group.id}/>
    <section className="card below"><div className="section-title"><h2>그룹원</h2><span>{group.members.length}명</span></div>
     {group.members.slice(0,memberShown).map(member=><div className="record-row" key={member.userId}>
      <div className="record-details"><strong>{member.nickname}</strong><p>{member.isOwner?'그룹 관리자':'그룹원'}</p></div>

@@ -1,4 +1,5 @@
 'use client';
+import GroupChat from './group-chat';
 import {useCallback,useEffect,useState} from 'react';
 import {supabase} from '../lib/supabase';
 
@@ -81,13 +82,14 @@ export default function AdminPanel(){
        }}>회원 영구 삭제</button>
       </div>}
      </div>)}</div>
-     {selectedUser&&!selectedUser.isAdmin&&<div className="admin-limit"><h3>{selectedUser.nickname} · 채팅 제한</h3><p>그룹 채팅 개발 후 서버에서 제한 종료 시각을 검사하도록 연결할 예정이야.</p>
+     {selectedUser&&!selectedUser.isAdmin&&<div className="admin-limit"><h3>{selectedUser.nickname} · 채팅 제한</h3><p>제한 시간 동안 모든 그룹에서 메시지 전송이 차단돼요.</p>
       <div className="admin-actions">{([5,30,60,1440,0] as const).map(n=><button key={n} className="small" disabled={busy} onClick={()=>{const label=n===0?'제한 해제':`${n>=60?n/60+'시간':n+'분'} 제한`;if(window.confirm(`${selectedUser.nickname}님에게 ${label} 조치를 적용할까요?`))void act('chageun_admin_chat_limit',{p_user:selectedUser.id,p_minutes:n},`${label}을(를) 적용했어요.`);}}>{n===0?'제한 해제':n===1440?'24시간':n===60?'1시간':`${n}분`}</button>)}</div>
      </div>}
     </>}
     {section==='groups'&&<div className="admin-list">{data.groups.map(group=><div className="admin-item" key={group.id}>
      <div className="admin-item-details"><strong>{group.name}</strong><p>구성원 {group.members.filter(x=>x.status==='accepted').length}명 · 생성 {koreanTime(group.createdAt)}</p></div>
-     <div className="admin-members">{group.members.map(m=><div className="admin-member" key={m.userId}>
+     <GroupChat groupId={group.id} readOnly/>
+   <div className="admin-members">{group.members.map(m=><div className="admin-member" key={m.userId}>
       <span>{m.nickname} {m.isOwner?'· 그룹 관리자':m.status==='pending'?'· 초대 대기':''}</span>
       <div className="admin-actions">
        {!m.isOwner&&m.status==='accepted'&&<button className="small" disabled={busy} onClick={()=>{if(window.confirm(`${m.nickname}님을 이 그룹의 관리자로 지정할까요?`))void act('chageun_admin_transfer_owner',{p_group:group.id,p_new_owner:m.userId},'그룹 관리자를 변경했어요.');}}>관리자 지정</button>}
