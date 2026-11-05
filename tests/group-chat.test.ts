@@ -12,7 +12,7 @@ test('group chat membership, moderation, pagination and seven-day expiry',async(
    create function auth.uid() returns uuid language sql as $$select current_setting('request.jwt.claim.sub',true)::uuid$$;
    create schema cron; create table cron.jobs(command text);
    create function cron.schedule(text,text,text) returns void language sql as $$insert into cron.jobs values ($3)$$;`);
-  for(const file of ['001_study_workspace','002_friends','003_groups','004_admin_core','007_group_chat']){
+  for(const file of ['001_study_workspace','002_friends','003_groups','004_admin_core','007_group_chat','008_chat_delete']){
    await db.exec(await readFile(new URL('../supabase/migrations/'+file+'.sql',import.meta.url),'utf8'));
   }
   await db.exec(`insert into auth.users(id) values ('${member}'),('${pending}'),('${admin}');
@@ -37,5 +37,12 @@ test('group chat membership, moderation, pagination and seven-day expiry',async(
   const command=(await db.query<{command:string}>("select command from cron.jobs where command like '%group_messages%'")).rows[0].command;
   await db.exec(command);
   assert.equal((await db.query('select id from chageun_internal.group_messages')).rows.length,51);
+  const erase=(id:string,reason:string|null=null)=>db.query('select public.chageun_chat_delete($1,$2,$3)',[group,id,reason]);
+  await login(pending);await assert.rejects(erase(recent[0].message_id),/권한/);
+  await db.exec(`reset role; update public.study_group_members set status='accepted' where user_id='${pending}'`);
+  await login(pending);await assert.rejects(erase(recent[0].message_id),/권한/);
+  await login(member);await erase(recent[0].message_id);
+  await login(admin);await erase(recent[1].message_id,'운영 정책');
+  assert.ok(!(await read()).rows.some(row=>row.message_id===recent[0].message_id||row.message_id===recent[1].message_id));
  }finally{await db.close();}
 });
