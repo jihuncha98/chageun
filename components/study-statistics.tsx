@@ -1,18 +1,54 @@
 'use client';
-import {useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import {alive,duration,localInput,sliceDay,type Entry,type Study} from '../lib/study';
 import {pageCount,pageItems,pageNumbers,RECORDS_PER_PAGE,safePage} from '../lib/pagination';
 import {studyStatistics,type StudyPoint} from '../lib/statistics';
+import {supabase} from '../lib/supabase';
+import {parseStudyRollup,rollupMatchesRaw,rollupQueryFrom,studyStatisticsFromRollup,type SavedStudyRollup} from '../lib/study-rollup';
+import {studyDay} from '../lib/study-day';
 
 const label=(day:string)=>`${Number(day.slice(5,7))}/${Number(day.slice(8,10))}`;
 const longTime=duration;
 
-export default function StudyStatistics({data,now,review,pending,busy,onEditEntry,onStopEntry,onDeleteEntry}:{data:Study;now:number;review:boolean;pending:boolean;busy:boolean;onEditEntry:(entry:Entry)=>void;onStopEntry:(entry:Entry)=>void;onDeleteEntry:(entry:Entry)=>void}){
+export default function StudyStatistics({userId,data,now,review,pending,busy,onEditEntry,onStopEntry,onDeleteEntry}:{userId:string;data:Study;now:number;review:boolean;pending:boolean;busy:boolean;onEditEntry:(entry:Entry)=>void;onStopEntry:(entry:Entry)=>void;onDeleteEntry:(entry:Entry)=>void}){
  const [range,setRange]=useState<7|30>(7);
  const [selected,setSelected]=useState<string|null>(null);
  const [recordPage,setRecordPage]=useState(1);
  const [recordDate,setRecordDate]=useState('');
- const report=useMemo(()=>studyStatistics(data,now,range),[data,now,range]);
+ // Phase 2 is READ-ONLY. The SQL preview table is rebuilt from entries on each save.
+ // Do not remove old entries until a separate immutable archive and offline-safety migration exists.
+ const [rollupState,setRollupState]=useState<{source:Study;rows:SavedStudyRollup[]}|null>(null);
+ const [rollupError,setRollupError]=useState('');
+ const currentStudyDay=studyDay(new Date(now));
+ useEffect(()=>{
+  if(pending){return;} // local changes must display from the local workspace until saved
+  let canceled=false;
+  const load=async()=>{
+   if(!supabase){if(!canceled)setRollupError('서버 연결을 확인해 주세요.');return;}
+   try{
+    const collected:unknown[]=[];
+    // Supabase/PostgREST commonly caps one query at 1,000 rows. Paginate rather than truncate.
+    for(let offset=0;offset<10000;offset+=1000){
+     const {data:rows,error}=await supabase.from('study_daily_rollup_preview')
+      .select('study_day,subject_id,duration_ms').eq('user_id',userId)
+      .gte('study_day',rollupQueryFrom(now)).lte('study_day',currentStudyDay)
+      .order('study_day',{ascending:true}).order('subject_id',{ascending:true})
+      .range(offset,offset+999);
+     if(error)throw Error(error.message);
+     if(!rows)throw Error('서버에서 통계 정보를 받지 못했어요.');
+     collected.push(...rows);
+     if(rows.length<1000)break;
+     if(offset>=9000)throw Error('서버 통계가 너무 많아 조회를 중단했어요.');
+    }
+    if(!canceled){setRollupState({source:data,rows:parseStudyRollup(collected)});setRollupError('');}
+   }catch(e){if(!canceled){setRollupState(null);setRollupError(e instanceof Error?e.message:'서버 통계를 읽지 못했어요.');}}
+  };
+  void load();
+  return()=>{canceled=true;};
+ },[data,userId,pending,currentStudyDay]);
+ const rawReport=useMemo(()=>studyStatistics(data,now,range),[data,now,range]);
+ const verified=Boolean(!pending&&rollupState?.source===data&&rollupMatchesRaw(data,now,range,rollupState.rows));
+ const report=useMemo(()=>verified&&rollupState?studyStatisticsFromRollup(data,now,range,rollupState.rows):rawReport,[verified,rollupState,data,now,range,rawReport]);
  const selectedDay=selected&&report.points.some(p=>p.day===selected)?selected:report.endDay;
  const point=report.points.find(p=>p.day===selectedDay) as StudyPoint;
  const dailyTasks=alive(data.tasks).filter(t=>t.day===selectedDay);
@@ -31,6 +67,9 @@ export default function StudyStatistics({data,now,review,pending,busy,onEditEntr
   <section className="card">
    <div className="section-title"><div><h2>공부 통계</h2><p>한국 시간 오전 6시부터 다음 날 오전 6시까지를 하루로 계산해요.</p></div><div className="stats-range" role="group" aria-label="조회 기간"><button className="small" aria-pressed={range===7} onClick={()=>{setRange(7);setSelected(null);}}>최근 7일</button><button className="small" aria-pressed={range===30} onClick={()=>{setRange(30);setSelected(null);}}>최근 30일</button></div></div>
    {pending&&<p className="notice">아직 서버에 보내지 않은 기록이 있어요. 이 통계는 현재 기기 기준이에요.</p>}
+   {verified&&<p className="fine">서버 비교용 요약과 기존 기록의 날짜·과목별 값이 일치해요. 영구 보관·자동 삭제는 아직 적용되지 않았어요.</p>}
+   {!pending&&rollupState?.source===data&&!verified&&<p role="status" className="notice">서버 통계와 기존 기록이 달라 기존 기록으로 계산하고 있어요. 이전 측정 기록을 삭제하지 마세요.</p>}
+   {!pending&&rollupError&&<p role="status" className="notice">서버 통계를 확인하지 못해 기존 기록으로 표시하고 있어요. ({rollupError})</p>}
    {review?<p role="alert" className="notice error">겹치거나 충돌한 기록이 있어 통계 합계를 숨겼어요. 아래 측정 기록 목록에서 시간을 수정하거나 중복 기록을 휴지통으로 옮겨 주세요.</p>:<>
     <div className="stats-overview">
      <div><span>기간 누적 순공</span><strong>{longTime(report.periodTotal)}</strong><small>{report.startDay} ~ {report.endDay}</small></div>
