@@ -79,3 +79,22 @@ export function rollupQueryFrom(now:number):string{
  const today=new Date(now+9*3600000-6*3600000).toISOString().slice(0,10);
  return moveStudyDay(today,-29);
 }
+
+/**
+ * After physical history cleanup the retained workspace is only a SUBSET of the
+ * immutable server fact ledger. Verify that the server still contains every
+ * locally retained completed study interval before trusting its archive.
+ * Historical rows may legitimately be greater than the locally retained sum.
+ */
+export function rollupCoversRetainedRaw(s:Study,now:number,count:7|30,rows:readonly SavedStudyRollup[]):boolean{
+ const raw=studyStatistics(s,now,count);
+ const saved=studyStatisticsFromRollup(s,now,count,rows);
+ if(raw.points.some((p,i)=>p.ms>saved.points[i].ms))return false;
+ const sums=(items:StudyStatistics['subjectTotals'])=>{
+  const m=new Map<string,number>();
+  for(const item of items){const id=item.id==='missing'?'unknown':item.id;m.set(id,(m.get(id)??0)+item.ms);}
+  return m;
+ };
+ const a=sums(raw.subjectTotals),b=sums(saved.subjectTotals);
+ return [...a].every(([id,ms])=>(b.get(id)??0)>=ms);
+}

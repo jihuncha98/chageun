@@ -4,7 +4,7 @@ import {alive,duration,localInput,sliceDay,type Entry,type Study} from '../lib/s
 import {pageCount,pageItems,pageNumbers,RECORDS_PER_PAGE,safePage} from '../lib/pagination';
 import {studyStatistics,type StudyPoint} from '../lib/statistics';
 import {supabase} from '../lib/supabase';
-import {parseStudyRollup,rollupMatchesRaw,rollupQueryFrom,studyStatisticsFromRollup,type SavedStudyRollup} from '../lib/study-rollup';
+import {parseStudyRollup,rollupCoversRetainedRaw,rollupQueryFrom,studyStatisticsFromRollup,type SavedStudyRollup} from '../lib/study-rollup';
 import {studyDay} from '../lib/study-day';
 
 const label=(day:string)=>`${Number(day.slice(5,7))}/${Number(day.slice(8,10))}`;
@@ -15,8 +15,8 @@ export default function StudyStatistics({userId,data,now,review,pending,busy,onE
  const [selected,setSelected]=useState<string|null>(null);
  const [recordPage,setRecordPage]=useState(1);
  const [recordDate,setRecordDate]=useState('');
- // Phase 3 is READ-ONLY: verified durable statistics created in 1.12.
- // Old measurement entries must NOT be deleted before an explicit cutover and offline-safety migration.
+ // The server keeps completed study facts even after old detail entries are pruned.
+ // Archive records are only trusted when they cover the locally retained details.
  const [rollupState,setRollupState]=useState<{source:Study;rows:SavedStudyRollup[]}|null>(null);
  const [rollupError,setRollupError]=useState('');
  const currentStudyDay=studyDay(new Date(now));
@@ -47,7 +47,7 @@ export default function StudyStatistics({userId,data,now,review,pending,busy,onE
   return()=>{canceled=true;};
  },[data,userId,pending,currentStudyDay]);
  const rawReport=useMemo(()=>studyStatistics(data,now,range),[data,now,range]);
- const verified=Boolean(!pending&&rollupState?.source===data&&rollupMatchesRaw(data,now,range,rollupState.rows));
+ const verified=Boolean(!pending&&rollupState?.source===data&&rollupCoversRetainedRaw(data,now,range,rollupState.rows));
  const report=useMemo(()=>verified&&rollupState?studyStatisticsFromRollup(data,now,range,rollupState.rows):rawReport,[verified,rollupState,data,now,range,rawReport]);
  const selectedDay=selected&&report.points.some(p=>p.day===selected)?selected:report.endDay;
  const point=report.points.find(p=>p.day===selectedDay) as StudyPoint;
@@ -55,7 +55,7 @@ export default function StudyStatistics({userId,data,now,review,pending,busy,onE
  const note=alive(data.notes).find(n=>n.day===selectedDay);
  const max=Math.max(1,...report.points.map(p=>p.ms));
  const delta=report.today.ms-report.yesterday.ms;
- // The history covers all saved dates, not merely the 7/30 day chart window.
+ // This list only reflects detailed entries still kept by the server after midnight cleanup.
  const records=alive(data.entries).filter(e=>!recordDate||Math.max(0,sliceDay(e,recordDate,now).end-sliceDay(e,recordDate,now).start)>0).sort((a,b)=>b.start-a.start||a.id.localeCompare(b.id));
  const totalRecordPages=pageCount(records.length);
  const actualRecordPage=safePage(recordPage,totalRecordPages);
@@ -67,8 +67,8 @@ export default function StudyStatistics({userId,data,now,review,pending,busy,onE
   <section className="card">
    <div className="section-title"><div><h2>공부 통계</h2><p>한국 시간 오전 6시부터 다음 날 오전 6시까지를 하루로 계산해요.</p></div><div className="stats-range" role="group" aria-label="조회 기간"><button className="small" aria-pressed={range===7} onClick={()=>{setRange(7);setSelected(null);}}>최근 7일</button><button className="small" aria-pressed={range===30} onClick={()=>{setRange(30);setSelected(null);}}>최근 30일</button></div></div>
    {pending&&<p className="notice">아직 서버에 보내지 않은 기록이 있어요. 이 통계는 현재 기기 기준이에요.</p>}
-   {verified&&<p className="fine">영구 보존 통계와 현재 측정 기록의 날짜·과목별 값이 일치해요. 오래된 측정 기록의 자동 삭제는 아직 비활성화 상태예요.</p>}
-   {!pending&&rollupState?.source===data&&!verified&&<p role="status" className="notice">영구 보존 통계와 현재 측정 기록이 달라 기존 기록으로 계산하고 있어요. 과거 측정 기록을 삭제하지 마세요.</p>}
+   {verified&&<p className="fine">영구 보존된 과거 통계를 사용하고 있어요. 개별 측정 기록은 오늘과 어제만 보관해요.</p>}
+   {!pending&&rollupState?.source===data&&!verified&&<p role="status" className="notice">영구 보존 통계에 현재 기록이 모두 반영되지 않았어요. 서버 동기화 상태를 확인해 주세요.</p>}
    {!pending&&rollupError&&<p role="status" className="notice">서버 통계를 확인하지 못해 기존 기록으로 표시하고 있어요. ({rollupError})</p>}
    {review?<p role="alert" className="notice error">겹치거나 충돌한 기록이 있어 통계 합계를 숨겼어요. 아래 측정 기록 목록에서 시간을 수정하거나 중복 기록을 휴지통으로 옮겨 주세요.</p>:<>
     <div className="stats-overview">
@@ -95,7 +95,7 @@ export default function StudyStatistics({userId,data,now,review,pending,busy,onE
    </div>
   </>}
   <section className="card below" aria-label="측정 기록 목록">
-   <div className="section-title"><div><h2>측정 기록 목록</h2><p className="fine">전체 기간의 기록을 최신 순으로 보여 줘요. 한 페이지에 {RECORDS_PER_PAGE}개씩 표시해요.</p></div><span className="fine">전체 {records.length}개</span></div>
+   <div className="section-title"><div><h2>측정 기록 목록</h2><p className="fine">오늘·어제의 개별 측정 기록만 보관해요(한국 시간 자정 기준). 한 페이지에 {RECORDS_PER_PAGE}개씩 표시해요.</p></div><span className="fine">전체 {records.length}개</span></div>
    <div className="record-filters"><label>학습일별 조회<input aria-label="기록 조회 학습일" type="date" value={recordDate} onChange={e=>{setRecordDate(e.target.value);setRecordPage(1);}}/></label><button className="small" type="button" onClick={()=>{setRecordDate('');setRecordPage(1);}} disabled={!recordDate}>전체 날짜 보기</button></div>
    {records.length===0?<p className="empty">{recordDate?'선택한 학습일에 측정 기록이 없어요.':'아직 측정 기록이 없어요.'}</p>:<>
     {visibleRecords.map(e=><div className="record-row" key={e.id}><div className="record-details"><strong>{taskName(e)}</strong><p>{e.kind==='nap'?'쪽잠 · ':`${subjectName(e)} · `}{localInput(e.start).replace('T',' ')} → {e.end===null?'측정 중':localInput(e.end).replace('T',' ')} · {duration((e.end??now)-e.start)}</p></div><div className="actions">{e.end===null?<button type="button" className="small" disabled={busy} onClick={()=>onStopEntry(e)}>종료</button>:<button type="button" className="small" onClick={()=>onEditEntry(e)}>시간 수정</button>}<button type="button" className="small" disabled={busy} onClick={()=>onDeleteEntry(e)}>휴지통</button></div></div>)}
