@@ -25,3 +25,20 @@ test('older schema-1 server workspace without exams upgrades in memory and safel
  const savedOk=await store.update(d=>d.exams.push({id:'e',name:'기말고사',date:'2026-12-15',deleted_at:null}));
  assert.equal(savedOk,true);assert.equal(server.data.exams[0].name,'기말고사');
 });
+
+test('reopening a workspace while its old subscription is leaving uses a fresh channel',()=>{
+ Object.defineProperty(globalThis,'window',{value:new EventTarget(),configurable:true});
+ const joined=new Set<string>();
+ const realtime={...client,channel(topic:string){
+  return {on(){
+   assert.ok(!joined.has(topic),'subscription already joined');
+   return {subscribe(){joined.add(topic);return {topic};}};
+  }};
+ },removeChannel:async()=>{}};
+ const open=()=>createStudyStore('same-user',realtime as unknown as typeof client);
+ const first=open(),second=open();
+ try{
+  first.start();first.start();assert.equal(joined.size,1);
+  first.destroy();second.start();assert.equal(joined.size,2);
+ }finally{first.destroy();second.destroy();Reflect.deleteProperty(globalThis,'window');}
+});
