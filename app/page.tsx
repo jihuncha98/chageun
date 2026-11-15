@@ -8,6 +8,7 @@ import {readAppearance,appearanceStorageKeys,type Accent,type FontChoice} from '
 import {authErrorMessage,authReturnUrl,brandSubtitle} from '../lib/auth-ui';
 import AdminPanel from '../components/admin-panel';
 import {BroadcastPopup,fetchMyBroadcasts} from '../components/broadcast-notices';
+import {stopPushBeforeLogout} from '../components/push-settings';
 import {fetchMyAdminNotices} from '../components/admin-notices';
 
 const tabs=['오늘','시험 대비','수행평가','통계','친구','그룹','알림','설정'];
@@ -38,6 +39,13 @@ export default function Home(){
  const [mode,setMode]=useState<AuthMode>('login');
  const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');
  const loggedInUserId=session?.user.id;
+ useEffect(()=>{
+  const timer=setTimeout(()=>{if(new URLSearchParams(window.location.search).get('notifications')==='1')setTab('알림');},0);
+  const showNotifications=()=>setTab('알림');
+  const onPushClick=(event:MessageEvent)=>{if(event.data?.type==='chageun-notifications')showNotifications();};
+  navigator.serviceWorker?.addEventListener('message',onPushClick);
+  return()=>{clearTimeout(timer);navigator.serviceWorker?.removeEventListener('message',onPushClick);};
+ },[]);
  useEffect(()=>{const timer=setTimeout(()=>{try{const a=readAppearance(localStorage);setDark(a.dark);setAccent(a.accent);setFont(a.font);}catch{}},0);return()=>clearTimeout(timer);},[]);
  useEffect(()=>{if('serviceWorker' in navigator&&process.env.NODE_ENV==='production'){void navigator.serviceWorker.register(`${process.env.NEXT_PUBLIC_BASE_PATH??'/chageun'}/sw.js`).catch(()=>{});}const id=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(id);},[]);
  useEffect(()=>{
@@ -133,7 +141,7 @@ export default function Home(){
    setMode('login');setMessage('비밀번호 변경을 완료했어요. 새 비밀번호로 로그인해 주세요.');
   }catch{setMessage('비밀번호 변경 중 연결 오류가 발생했어요. 다시 시도해 주세요.');}finally{setBusy(false);}
  }
- async function logout(){if(!supabase)return;const {error}=await supabase.auth.signOut();if(error)setMessage('로그아웃에 실패했어요. 다시 시도해 주세요.');else{setMode('login');setMessage('');setTab('오늘');}}
+ async function logout(){if(!supabase)return;try{await stopPushBeforeLogout();}catch{/* Continue account sign-out even if the push server is unavailable. */}const {error}=await supabase.auth.signOut();if(error)setMessage('로그아웃에 실패했어요. 다시 시도해 주세요.');else{setMode('login');setMessage('');setTab('오늘');}}
  function updateProfileUser(user:User){setSession(current=>current&&current.user.id===user.id?{...current,user}:current);}
  const authenticated=Boolean(session)&&mode!=='recovery';
  const subtitle=brandSubtitle(authenticated,authenticated?session?.user.user_metadata:undefined);

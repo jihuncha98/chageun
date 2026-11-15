@@ -1,4 +1,5 @@
 'use client';
+import PushSettings from './push-settings';
 import {useState,type FormEvent} from 'react';
 import type {User} from '@supabase/supabase-js';
 import {supabase} from '../lib/supabase';
@@ -37,5 +38,5 @@ export default function ProfileSettings({user,onSaved}:{user:User;onSaved:(user:
   }catch{setNotice('연결을 확인하고 다시 로그인해 계정 상태를 확인해 주세요.');}
   finally{setBusy(false);}
  }
- return <section className="card profile-settings"><p className="eyebrow">MY PROFILE</p><h2>내 이름 설정</h2><p>로그인 후 차근 왼쪽에 표시되는 문구를 바꿔요. 내 계정에 저장되므로 다른 기기에서도 적용돼요.</p><form onSubmit={save}><label>표시할 이름<input type="text" name="display-name" autoComplete="nickname" required maxLength={24} value={draft} onChange={e=>setDraft(e.target.value)} placeholder="예: 지훈"/></label><p className="profile-preview">미리 보기: <strong>{brandSubtitle(true,{[DISPLAY_NAME_KEY]:cleanDisplayName(draft)})}</strong></p><button className="primary compact" disabled={busy}>{busy?'저장 중…':'이름 저장'}</button></form>{notice&&<p className="notice" role="status">{notice}</p>}<p className="fine">친구 메뉴의 공개 별명과는 별도의 설정이며, 이메일 주소는 다른 사용자에게 표시하지 않아요.</p><button className="small" disabled={busy} onClick={()=>void withdraw()}>회원 탈퇴</button></section>;
+ return <><section className="card profile-settings"><p className="eyebrow">MY PROFILE</p><h2>내 이름 설정</h2><p>로그인 후 차근 왼쪽에 표시되는 문구를 바꿔요. 내 계정에 저장되므로 다른 기기에서도 적용돼요.</p><form onSubmit={save}><label>표시할 이름<input type="text" name="display-name" autoComplete="nickname" required maxLength={24} value={draft} onChange={e=>setDraft(e.target.value)} placeholder="예: 지훈"/></label><p className="profile-preview">미리 보기: <strong>{brandSubtitle(true,{[DISPLAY_NAME_KEY]:cleanDisplayName(draft)})}</strong></p><button className="primary compact" disabled={busy}>{busy?'저장 중…':'이름 저장'}</button></form>{notice&&<p className="notice" role="status">{notice}</p>}<p className="fine">친구 메뉴의 공개 별명과는 별도의 설정이며, 이메일 주소는 다른 사용자에게 표시하지 않아요.</p><button className="small" disabled={busy} onClick={()=>void withdraw()}>회원 탈퇴</button></section><PushSettings/></>;
 }
