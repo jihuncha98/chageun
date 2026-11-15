@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useState,type FormEvent} from 'react';
+import {Component,type ReactNode,useEffect,useState,type FormEvent} from 'react';
 import type {Session,User} from '@supabase/supabase-js';
 import {supabase} from '../lib/supabase';
 import {studyDay} from '../lib/study-day';
@@ -15,6 +15,16 @@ const tabIcons=['◷','▦','▤','▥','♧','◎','🔔','⚙'];
 type AuthMode='login'|'signup'|'forgot'|'recovery';
 function PasswordFields({confirmation=false,autoComplete='new-password'}:{confirmation?:boolean;autoComplete?:string}) {
  return <><label>비밀번호<input name="password" type="password" autoComplete={autoComplete} minLength={8} maxLength={128} required placeholder="8자 이상"/></label>{confirmation&&<label>비밀번호 확인<input name="password_confirm" type="password" autoComplete="new-password" minLength={8} maxLength={128} required placeholder="같은 비밀번호를 다시 입력"/></label>}</>;
+}
+class AdminScreen extends Component<{children:ReactNode},{failure:string}> {
+ state={failure:''};
+ static getDerivedStateFromError(error:unknown){
+  return {failure:error instanceof Error?error.message:'관리자 화면을 표시하는 중 오류가 발생했어요.'};
+ }
+ render(){
+  if(this.state.failure)return <section className="card" role="alert"><h2>관리자 화면 오류</h2><p>{this.state.failure}</p><button className="small" onClick={()=>this.setState({failure:''})}>다시 시도</button></section>;
+  return this.props.children;
+ }
 }
 export default function Home(){
  const [tab,setTab]=useState('오늘');
@@ -135,8 +145,8 @@ export default function Home(){
    <section className="heading"><div><p className="eyebrow">CHAGEUN · MY STUDY SPACE</p><h1>{tab==='오늘'?'오늘의 공부':tab}</h1>{tab!=='오늘'&&<p>차근차근, 나만의 공부 공간</p>}</div><span className="badge">오늘도, 차근차근.</span></section>
    {authenticated&&session?<>
     <div className="account-strip"><span>{session.user.email}</span><button className="small" onClick={()=>void logout()}>로그아웃</button></div>
-    {tab==='관리자'&&isAdmin?<AdminPanel/>:now&&<StudyDashboard key={session.user.id} userId={session.user.id} tab={tab} now={now.getTime()} profileUser={session.user} onProfileSaved={updateProfileUser} onUnreadCountChange={setUnreadCount} appearance={{dark,accent,font}} onAppearanceTheme={setAppearanceTheme} onAppearanceAccent={setAppearanceAccent} onAppearanceFont={setAppearanceFont}/>}
-    <BroadcastPopup key={session.user.id} userId={session.user.id}/>
+    {tab==='관리자'&&isAdmin?<AdminScreen><AdminPanel/></AdminScreen>:now&&<StudyDashboard key={session.user.id} userId={session.user.id} tab={tab} now={now.getTime()} profileUser={session.user} onProfileSaved={updateProfileUser} onUnreadCountChange={setUnreadCount} appearance={{dark,accent,font}} onAppearanceTheme={setAppearanceTheme} onAppearanceAccent={setAppearanceAccent} onAppearanceFont={setAppearanceFont}/>}
+    <BroadcastPopup key={`broadcast-${session.user.id}`} userId={session.user.id}/>
    </>:<div className="grid auth-layout">
     <section className="hero"><p>지금 이 순간</p><div className="clock">{now?new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}).format(now):'--:--'}</div><p>{now?`${studyDay(now)} 학습일`:'한국 시간 기준'}</p><div className="hero-note">새벽의 노력도 어제의 기록에.<br/>하루는 오전 6시에 새롭게 시작해요.</div></section>
     <section className="card auth-card"><p className="eyebrow">MY ACCOUNT</p><h2>{mode==='signup'?'새 계정 만들기':mode==='forgot'?'비밀번호 찾기':mode==='recovery'?'새 비밀번호 설정':'나의 공부 공간에 로그인'}</h2>
