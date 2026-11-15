@@ -1,5 +1,6 @@
 'use client';
 import GroupChat from './group-chat';
+import {BroadcastAdminPanel} from './broadcast-notices';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
 import {personName} from '../lib/visible-names';
@@ -23,14 +24,21 @@ export default function AdminPanel(){
  const [notice,setNotice]=useState('');
  const [search,setSearch]=useState('');
  const [reason,setReason]=useState('');
- const [section,setSection]=useState<'users'|'groups'|'archived'|'history'>('users');
+ const [section,setSection]=useState<'users'|'groups'|'archived'|'history'|'notifications'>('users');
  const [selection,setSelection]=useState('');
  const [nameEdit,setNameEdit]=useState<NameEdit|null>(null);
  const refresh=useCallback(async()=>{
   if(!supabase)return;
   const {data:result,error:rpcError}=await supabase.rpc('chageun_admin_dashboard');
   if(rpcError)throw rpcError;
-  setData((result??EMPTY) as Overview);
+  if(!result||!Array.isArray(result.users)||!Array.isArray(result.groups)||
+     !Array.isArray(result.archivedGroups)||!Array.isArray(result.audit)||
+     result.users.some((user:UserRow)=>!user||typeof user.id!=='string'||
+       (user.displayName!=null&&typeof user.displayName!=='string')||(user.nickname!=null&&typeof user.nickname!=='string'))||
+     result.groups.some((group:GroupRow)=>!group||!Array.isArray(group.members))){
+   throw new Error('회원·그룹 목록의 서버 응답을 확인해 주세요.');
+  }
+  setData(result as Overview);
  },[]);
  useEffect(()=>{
   let alive=true;
@@ -84,11 +92,10 @@ export default function AdminPanel(){
  const filtered=data.users.filter(x=>`${x.nickname} ${x.displayName??''} ${x.friendCode??''} ${x.email??''}`.toLowerCase().includes(search.trim().toLowerCase()));
  return <div className="admin-panel">
   <section className="card"><p className="eyebrow">ADMINISTRATION</p><h2>차근 전체 관리자</h2>
-   <p>관리자 권한은 서버에서 확인해요. 표시 이름은 차근 제목의 ‘○○의 근면성실’과 친구·그룹의 기본 이름으로 사용하고, 친구 별명은 함께 별도 표기해요.</p>
-   <div className="admin-tabs">{([['users','회원 관리'],['groups','그룹 관리'],['archived','삭제된 그룹'],['history','관리 기록']] as const).map(([key,name])=><button className="small" aria-pressed={section===key} key={key} onClick={()=>setSection(key)}>{name}</button>)}</div>
+   <div className="admin-tabs">{([['users','회원 관리'],['groups','그룹 관리'],['archived','삭제된 그룹'],['history','관리 기록'],['notifications','알림 발송']] as const).map(([key,name])=><button className="small" aria-pressed={section===key} key={key} onClick={()=>setSection(key)}>{name}</button>)}</div>
    {error&&<p role="alert" className="notice error">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}
    {loading?<p>관리자 정보를 불러오는 중…</p>:<>
-    {section!=='history'&&<label>관리자 조치 사유 (필수)<input value={reason} maxLength={150} placeholder="예: 그룹 운영 요청, 부적절한 별명 수정" onChange={e=>setReason(e.target.value)}/></label>}
+    {section!=='history'&&section!=='notifications'&&<label>관리자 조치 사유 (필수)<input value={reason} maxLength={150} placeholder="예: 그룹 운영 요청, 부적절한 별명 수정" onChange={e=>setReason(e.target.value)}/></label>}
     {section==='users'&&<>
      <label>회원 검색 (표시 이름·별명·이메일·친구 코드)<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="검색어 입력"/></label>
      <div className="admin-list">{filtered.map(user=><div className="admin-item" key={user.id}>
@@ -98,10 +105,12 @@ export default function AdminPanel(){
        <button className="small" disabled={busy} onClick={()=>beginNameEdit(user,'nickname')}>친구 별명 수정</button>
        <button className="small" disabled={busy} onClick={()=>setSelection(selection===user.id?'':user.id)}>채팅 제한</button>
        <button className="small" disabled={busy||!user.email} onClick={()=>{
+        setFeedbackUser(user.id);setError('');setNotice('');
+        if(reason.trim().length<2||reason.trim().length>150){setError('먼저 관리자 조치 사유를 2~150자로 입력해 주세요.');return;}
         const email=window.prompt(`${user.nickname}님의 계정과 공부 기록을 영구 삭제합니다. 남은 정식 그룹원이 있으면 그룹장이 승계됩니다. 없으면 그룹과 초대가 삭제됩니다. 계속하려면 대상 이메일을 입력하세요.`);
         if(email===null)return;
         if(email.trim().toLowerCase()!==user.email?.toLowerCase()){setError('대상 이메일이 일치하지 않아요.');return;}
-        void act('chageun_delete_account',{p_user:user.id,p_email:email},'회원 계정을 삭제했어요.');
+        void act('chageun_delete_account',{p_user:user.id,p_email:email},'회원 계정을 삭제했어요.',reason,user.id);
        }}>회원 영구 삭제</button>
       </div>}
       {nameEdit?.id===user.id&&<form className="admin-name-editor" onSubmit={e=>void saveName(e)}>
@@ -144,6 +153,7 @@ export default function AdminPanel(){
      }}>그룹 삭제 (7일 복구)</button></div>
     </div>)}</div>}
     {section==='archived'&&<div className="admin-list">{data.archivedGroups.map(g=><div className="admin-item" key={g.id}><strong>{g.name}</strong><p>삭제: {koreanTime(g.deletedAt)} · 복구 만료: {koreanTime(g.expiresAt)}</p><p>삭제 당시 구성원·초대 {g.memberCount}개</p><button className="small" disabled={busy} onClick={()=>{if(window.confirm(`「${g.name}」 그룹을 복구할까요?`))void act('chageun_admin_restore_group',{p_group:g.id},'그룹을 복구했어요.');}}>그룹 복구</button></div>)}</div>}
+    {section==='notifications'&&<BroadcastAdminPanel/>}
     {section==='history'&&<div className="admin-list">{data.audit.map((l,i)=><div className="admin-item" key={`${l.at}-${i}`}><strong>{l.action}</strong><p>{l.reason}</p><small>{koreanTime(l.at)}</small></div>)}</div>}
    </>}
   </section>
