@@ -1,0 +1,43 @@
+/* Chageun broadcast announcements · additive styles (v2.2) */
+.app .broadcast-inbox,.app .broadcast-admin{margin-bottom:18px}
+.app .broadcast-admin .section-title,.app .broadcast-inbox .section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.app .broadcast-admin .section-title h2,.app .broadcast-inbox .section-title h2{margin:0}
+.broadcast-admin-tag,.broadcast-label{font-size:12px;font-weight:800;letter-spacing:.04em;color:var(--accent)}
+.broadcast-admin-form{display:grid;grid-template-columns:1fr;gap:15px}
+.broadcast-admin-form label{display:block;font-size:13px;font-weight:650;color:var(--text)}
+.broadcast-admin-form input,.broadcast-admin-form textarea{display:block;width:100%;margin-top:8px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--panel);color:var(--text);resize:vertical;line-height:1.55}
+.broadcast-admin-actions{display:flex;justify-content:flex-end}.broadcast-admin-actions button{width:auto}
+.broadcast-history{border-top:1px solid var(--line);margin-top:20px;padding-top:18px}
+.broadcast-history h3{font-size:16px;margin:0 0 14px}
+.broadcast-history-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:14px 0}
+.broadcast-history-row:first-of-type{border-top:0}
+.broadcast-history-row>div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.broadcast-history-row strong,.broadcast-item strong{color:var(--text);overflow-wrap:anywhere}
+.broadcast-history-row small,.broadcast-item time{color:var(--muted);font-size:12px}
+.broadcast-empty{color:var(--muted);font-size:13px;margin:12px 0}
+.broadcast-list{display:grid;gap:12px}.broadcast-item{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+.broadcast-item-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.broadcast-item-top time{margin-left:auto}
+.broadcast-new{background:var(--accent-soft);color:var(--accent);border-radius:99px;font-size:10px;font-weight:800;padding:4px 8px}
+.broadcast-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}
+.broadcast-item .broadcast-body{margin:12px 0;color:var(--text)}
+.broadcast-overlay{position:fixed;inset:0;z-index:9999;background:rgba(8,17,39,.62);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)}
+.broadcast-dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:24px;box-shadow:0 26px 100px rgba(9,21,47,.3);padding:30px;width:min(100%,520px);max-height:min(82vh,690px);overflow-y:auto}
+.broadcast-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.broadcast-dialog-heading time{font-size:12px;color:var(--muted)}
+.broadcast-dialog h2{font-size:24px;line-height:1.4;margin:18px 0 12px;overflow-wrap:anywhere}
+.broadcast-dialog .broadcast-body{font-size:15px;max-height:320px;overflow-y:auto;margin:0 0 25px}
+.broadcast-dialog-actions{border-top:1px solid var(--line);padding-top:18px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.broadcast-dialog-actions span{font-size:12px;color:var(--muted)}
+.broadcast-dialog-actions button{min-width:110px;width:auto}
+@media(max-width:600px){.broadcast-dialog{padding:22px;border-radius:19px}.broadcast-dialog h2{font-size:20px}.broadcast-dialog-actions{align-items:stretch;flex-direction:column}.broadcast-dialog-actions button{width:100%}.broadcast-history-row{flex-wrap:wrap}}
+
+/* Integrated admin tab: no duplicate nested card; preserve today's and other menus' UI. */
+.app .admin-panel .broadcast-admin {margin:12px 0 0;min-width:0}
+.app .admin-panel .broadcast-admin .section-title {margin-bottom:15px}
+.app .admin-panel .broadcast-admin-form {max-width:760px}
+.app .admin-panel .broadcast-admin-form label {margin:0;color:var(--muted);font-size:12px}
+.app .admin-panel .broadcast-admin-form input, .app .admin-panel .broadcast-admin-form select, .app .admin-panel .broadcast-admin-form textarea {margin-top:7px;background:var(--bg);color:var(--text)}
+.app .admin-panel .broadcast-admin-form .primary {margin:2px 0 0;min-width:135px;border-radius:11px;padding:11px 19px}
+.app .admin-panel .broadcast-history-row {background:transparent}
+.app .admin-panel .broadcast-admin-tag {font-size:11px;color:var(--accent)}
+@media(min-width:740px){.app .admin-panel .broadcast-admin-form{grid-template-columns:repeat(2,minmax(0,1fr))}.app .admin-panel .broadcast-admin-form>label:nth-last-of-type(1){grid-column:1 / -1}.app .admin-panel .broadcast-admin-actions{grid-column:1/-1}}
