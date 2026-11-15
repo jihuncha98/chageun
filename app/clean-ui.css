@@ -1,0 +1,172 @@
+/* Shared visual rhythm for the existing study workspace. */
+.app {
+  --ui-card-radius: 16px;
+  --ui-gap: 16px;
+  --ui-soft-shadow: 0 2px 8px rgb(27 54 98 / 3%);
+}
+.app:not(.dark) {
+  --bg: #f6f8fc;
+  --panel: #fff;
+  --text: #20304a;
+  --muted: #66758a;
+  --line: #e7ecf3;
+}
+.app main {
+  max-width: 1680px;
+}
+.app aside {
+  padding-top: 30px;
+}
+.app .brand {
+  margin-bottom: 32px;
+  font-size: 32px;
+  letter-spacing: -2px;
+}
+.app .brand span {
+  letter-spacing: 0;
+  line-height: 1.6;
+}
+.app nav {
+  gap: 5px;
+}
+.app nav button {
+  min-height: 44px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.app:not(.dark) nav button[aria-current="page"] {
+  color: #245dc9;
+  background: #edf3ff;
+}
+.app .heading h1 {
+  letter-spacing: -.045em;
+}
+.app .card,
+.app .exam-today-banner {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  box-shadow: var(--ui-soft-shadow);
+}
+.app .card {
+  min-width: 0;
+}
+.app .card h2 {
+  letter-spacing: -.035em;
+}
+.app button {
+  touch-action: manipulation;
+}
+.app button.small {
+  min-height: 40px;
+  padding: 9px 13px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+.app button.primary {
+  border-radius: 10px;
+}
+.app input:not([type="checkbox"]):not([type="radio"]),
+.app select,
+.app textarea {
+  max-width: 100%;
+  min-height: 42px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: var(--panel);
+}
+.app input::placeholder,
+.app textarea::placeholder {
+  color: var(--muted);
+  opacity: .8;
+}
+.app textarea,
+.app select {
+  font: inherit;
+}
+.app label {
+  line-height: 1.5;
+}
+.app .record-row,
+.app .admin-item,
+.app .broadcast-history-row {
+  gap: 12px;
+  overflow-wrap: anywhere;
+}
+.app .admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px;
+  margin: 16px 0;
+  border-radius: 12px;
+  background: var(--bg);
+}
+.app .admin-tabs button.small {
+  flex: 1 1 auto;
+  border-color: transparent;
+  background: transparent;
+}
+.app .admin-tabs button[aria-pressed="true"] {
+  background: var(--panel);
+  color: #3473dc;
+  box-shadow: 0 1px 4px rgb(27 54 98 / 8%);
+}
+.app .admin-list {
+  display: grid;
+  gap: 12px;
+}
+.app .admin-item {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.app .admin-item-details p {
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.app .admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.app .admin-name-editor {
+  flex-basis: 100%;
+  padding-top: 12px;
+}
+.app .broadcast-dialog {
+  border-radius: 18px;
+}
+.app .broadcast-body {
+  overflow-wrap: anywhere;
+}
+@media (min-width: 1200px) {
+  .app .admin-item:has(> .admin-item-details) {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .app .admin-item-details {
+    flex: 1 1 240px;
+  }
+}
+@media (max-width: 850px) {
+  .app button.small {
+    min-height: 44px;
+  }
+  .app .admin-tabs button.small {
+    flex: 1 1 120px;
+  }
+}
+@media (max-width: 640px) {
+  .app .admin-item {
+    padding: 13px;
+  }
+  .app .admin-actions {
+    margin-top: 10px;
+  }
+}
