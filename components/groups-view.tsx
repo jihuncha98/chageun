@@ -1,4 +1,5 @@
 'use client';
+import {TitleBadge} from './title-badge';
 
 import {useCallback,useEffect,useRef,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
@@ -144,7 +145,7 @@ export default function GroupsView({now}:{now:number}){
     {!shareEnabled&&<p className="notice">{groupViewDescription(false)}</p>}
     <div className="group-rank-list">{board.map(row=><article key={row.member_id} className={`friend-rank-row ${row.is_me?'friend-self':''}`}>
      <div className="friend-rank-number">{row.position===null?'—':`${row.position}위`}</div>
-     <div className="friend-rank-user"><strong>{row.display_name}{row.is_me?' (나)':''} <em className="rank-title">{row.title}</em></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
+     <div className="friend-rank-user"><strong>{row.display_name}{row.is_me?' (나)':''} <TitleBadge label={row.title}/></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
      <div className="friend-rank-time">{friendTime(sharedStudyTime(row.total_ms,row.studying,boardReceivedAt,now,typeof navigator==='undefined'||navigator.onLine))}</div>
     </article>)}{board.length===0&&<p className="empty">표시할 순위가 없어요.</p>}</div>
     {pageCount>1&&<div className="record-pagination" role="navigation" aria-label="그룹 순위 페이지">

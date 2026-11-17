@@ -1,4 +1,5 @@
 'use client';
+import {TitleBadge} from './title-badge';
 import {useCallback,useEffect,useMemo,useRef,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
 import {sharedStudyTime} from '../lib/live-board-time';
@@ -128,7 +129,7 @@ export default function FriendsView({now}:{now:number}){
     {self&&!self.shared&&<p className="notice">공유를 끄면 친구들의 시간과 상태도 보이지 않아요.</p>}
     <label>이름 검색<input value={search} onChange={e=>setSearch(e.target.value)}/></label>{ranked.filter(r=>r.display_name.includes(search.trim())).map(row=><article key={row.member_id} className={`friend-rank-row ${row.is_me?'friend-self':''}`}>
      <div className="friend-rank-number">{row.rank===null?'—':`${row.rank}위`}</div>
-     <div className="friend-rank-user"><strong>{row.display_name}{row.is_me?' (나)':''} <em className="rank-title">{row.title}</em></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
+     <div className="friend-rank-user"><strong>{row.display_name}{row.is_me?' (나)':''} <TitleBadge label={row.title}/></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
      <div className="friend-rank-time">{friendTime(sharedStudyTime(row.total_ms,row.studying,boardReceivedAt,now,typeof navigator==='undefined'||navigator.onLine))}</div>
     </article>)}
     {ranked.length===0&&<p className="empty">아직 표시할 데이터가 없어요.</p>}
