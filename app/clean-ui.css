@@ -178,3 +178,108 @@
 .app .social-rank .friend-rank-time {font-variant-numeric:tabular-nums;letter-spacing:.01em}
 .app .shop-view label {display:grid;gap:5px;margin:10px 0}
 .app .shop-grid .small {margin:4px 5px 4px 0}
+
+/* Tablet-first layout for the common iPad portrait and landscape widths. */
+@media (min-width: 641px) and (max-width: 1100px) {
+  .app main {
+    padding: 20px clamp(18px, 3vw, 34px);
+  }
+  .app .heading {
+    margin: 24px 0 20px;
+  }
+  .app .workspace-tab-content:not(.chageun-today) {
+    gap: 15px;
+  }
+  .app .workspace-tab-content:not(.chageun-today) .card {
+    padding: clamp(18px, 2.4vw, 25px);
+    border-radius: 18px;
+  }
+  .app .shop-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .app .shop-grid > .card {
+    min-width: 0;
+  }
+  .app .shop-view .shop-tabs {
+    position: sticky;
+    top: 8px;
+    z-index: 3;
+    width: fit-content;
+    max-width: 100%;
+    padding: 5px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    backdrop-filter: blur(10px);
+  }
+  .app .shop-tabs button.small,
+  .app .month-calendar header button.small {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .app .month-layout {
+    grid-template-columns: minmax(0, 1.08fr) minmax(300px, .92fr);
+    align-items: start;
+    gap: 18px;
+  }
+  .app .month-calendar .month-grid button {
+    min-height: 54px;
+    padding: 7px 2px;
+  }
+  .app .month-calendar .month-grid small {
+    font-size: 10px;
+  }
+  .app .subject-analysis {
+    justify-content: flex-start;
+    gap: 18px;
+  }
+  .app .study-donut {
+    width: clamp(112px, 16vw, 154px);
+    flex: 0 0 auto;
+  }
+  .app .social-rank .friend-rank-row {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) minmax(110px, auto);
+    align-items: center;
+    gap: 12px;
+    padding: 14px 12px;
+  }
+  .app .social-rank .rank-title {
+    white-space: nowrap;
+  }
+}
+@media (min-width: 641px) and (max-width: 900px) {
+  .app .month-layout {
+    grid-template-columns: 1fr;
+  }
+  .app .shop-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .app .shop-grid {
+    grid-template-columns: 1fr;
+  }
+  .app .shop-tabs {
+    position: sticky;
+    top: 4px;
+    z-index: 3;
+    width: 100%;
+    justify-content: space-around;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--panel) 94%, transparent);
+    backdrop-filter: blur(10px);
+  }
+  .app .shop-tabs button.small {
+    min-height: 42px;
+    flex: 1 1 0;
+    padding: 8px 6px;
+  }
+  .app .month-calendar .month-grid button {
+    min-height: 48px;
+    padding: 6px 1px;
+  }
+}
