@@ -1,5 +1,6 @@
 'use client';
-import GroupChat from './group-chat';
+import {ShopAdmin} from './shop';
+
 import {BroadcastAdminPanel} from './broadcast-notices';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
@@ -24,8 +25,8 @@ export default function AdminPanel(){
  const [notice,setNotice]=useState('');
  const [search,setSearch]=useState('');
  const [reason,setReason]=useState('');
- const [section,setSection]=useState<'users'|'groups'|'archived'|'history'|'notifications'>('users');
- const [selection,setSelection]=useState('');
+ const [section,setSection]=useState<'users'|'groups'|'archived'|'history'|'notifications'|'shop'>('users');
+
  const [nameEdit,setNameEdit]=useState<NameEdit|null>(null);
  const refresh=useCallback(async()=>{
   if(!supabase)return;
@@ -87,15 +88,15 @@ export default function AdminPanel(){
   if(success)setNameEdit(null);
  }
  const [feedbackUser,setFeedbackUser]=useState('');
- const selectedUser=data.users.find(x=>x.id===selection);
+
  const adminNames=new Map(data.users.map(user=>[user.id,personName(user.displayName,user.nickname)]));
  const filtered=data.users.filter(x=>`${x.nickname} ${x.displayName??''} ${x.friendCode??''} ${x.email??''}`.toLowerCase().includes(search.trim().toLowerCase()));
  return <div className="admin-panel">
   <section className="card"><p className="eyebrow">ADMINISTRATION</p><h2>차근 전체 관리자</h2>
-   <div className="admin-tabs">{([['users','회원 관리'],['groups','그룹 관리'],['archived','삭제된 그룹'],['history','관리 기록'],['notifications','알림 발송']] as const).map(([key,name])=><button className="small" aria-pressed={section===key} key={key} onClick={()=>setSection(key)}>{name}</button>)}</div>
+   <div className="admin-tabs">{([['users','회원 관리'],['groups','그룹 관리'],['archived','삭제된 그룹'],['history','관리 기록'],['notifications','알림 발송'],['shop','크레딧/상점 관리']] as const).map(([key,name])=><button className="small" aria-pressed={section===key} key={key} onClick={()=>setSection(key)}>{name}</button>)}</div>
    {error&&<p role="alert" className="notice error">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}
    {loading?<p>관리자 정보를 불러오는 중…</p>:<>
-    {section!=='history'&&section!=='notifications'&&<label>관리자 조치 사유 (필수)<input value={reason} maxLength={150} placeholder="예: 그룹 운영 요청, 부적절한 별명 수정" onChange={e=>setReason(e.target.value)}/></label>}
+    {section!=='shop'&&section!=='history'&&section!=='notifications'&&<label>관리자 조치 사유 (필수)<input value={reason} maxLength={150} placeholder="예: 그룹 운영 요청, 부적절한 별명 수정" onChange={e=>setReason(e.target.value)}/></label>}
     {section==='users'&&<>
      <label>회원 검색 (표시 이름·별명·이메일·친구 코드)<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="검색어 입력"/></label>
      <div className="admin-list">{filtered.map(user=><div className="admin-item" key={user.id}>
@@ -103,7 +104,7 @@ export default function AdminPanel(){
       {!user.isAdmin&&<div className="admin-actions">
        <button className="small" disabled={busy||user.displayName===undefined} onClick={()=>beginNameEdit(user,'display')}>표시 이름 수정</button>
        <button className="small" disabled={busy} onClick={()=>beginNameEdit(user,'nickname')}>친구 별명 수정</button>
-       <button className="small" disabled={busy} onClick={()=>setSelection(selection===user.id?'':user.id)}>채팅 제한</button>
+
        <button className="small" disabled={busy||!user.email} onClick={()=>{
         setFeedbackUser(user.id);setError('');setNotice('');
         if(reason.trim().length<2||reason.trim().length>150){setError('먼저 관리자 조치 사유를 2~150자로 입력해 주세요.');return;}
@@ -132,13 +133,11 @@ export default function AdminPanel(){
       </form>}
       {feedbackUser===user.id&&(error||notice)&&<p className={error?'notice error':'notice'} role="status">{error||notice}</p>}
      </div>)}</div>
-     {selectedUser&&!selectedUser.isAdmin&&<div className="admin-limit"><h3>{selectedUser.nickname} · 채팅 제한</h3><p>제한 시간 동안 모든 그룹에서 메시지 전송이 차단돼요.</p>
-      <div className="admin-actions">{([5,30,60,1440,0] as const).map(n=><button key={n} className="small" disabled={busy} onClick={()=>{const label=n===0?'제한 해제':`${n>=60?n/60+'시간':n+'분'} 제한`;if(window.confirm(`${selectedUser.nickname}님에게 ${label} 조치를 적용할까요?`))void act('chageun_admin_chat_limit',{p_user:selectedUser.id,p_minutes:n},`${label}을(를) 적용했어요.`);}}>{n===0?'제한 해제':n===1440?'24시간':n===60?'1시간':`${n}분`}</button>)}</div>
-     </div>}
+
     </>}
     {section==='groups'&&<div className="admin-list">{data.groups.map(group=><div className="admin-item" key={group.id}>
      <div className="admin-item-details"><strong>{group.name}</strong><p>구성원 {group.members.filter(x=>x.status==='accepted').length}명 · 생성 {koreanTime(group.createdAt)}</p></div>
-     <GroupChat groupId={group.id} readOnly/>
+
    <div className="admin-members">{group.members.map(m=><div className="admin-member" key={m.userId}>
       <span>{adminNames.get(m.userId)??m.nickname} {m.isOwner?'· 그룹 관리자':m.status==='pending'?'· 초대 대기':''}</span>
       <div className="admin-actions">
@@ -153,6 +152,7 @@ export default function AdminPanel(){
      }}>그룹 삭제 (7일 복구)</button></div>
     </div>)}</div>}
     {section==='archived'&&<div className="admin-list">{data.archivedGroups.map(g=><div className="admin-item" key={g.id}><strong>{g.name}</strong><p>삭제: {koreanTime(g.deletedAt)} · 복구 만료: {koreanTime(g.expiresAt)}</p><p>삭제 당시 구성원·초대 {g.memberCount}개</p><button className="small" disabled={busy} onClick={()=>{if(window.confirm(`「${g.name}」 그룹을 복구할까요?`))void act('chageun_admin_restore_group',{p_group:g.id},'그룹을 복구했어요.');}}>그룹 복구</button></div>)}</div>}
+    {section==='shop'&&<ShopAdmin users={data.users}/>}
     {section==='notifications'&&<BroadcastAdminPanel/>}
     {section==='history'&&<div className="admin-list">{data.audit.map((l,i)=><div className="admin-item" key={`${l.at}-${i}`}><strong>{l.action}</strong><p>{l.reason}</p><small>{koreanTime(l.at)}</small></div>)}</div>}
    </>}

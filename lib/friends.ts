@@ -2,7 +2,7 @@
 export type FriendProfile={nickname:string;code:string;shareEnabled:boolean};
 export type FriendConnection={id:string;nickname:string;status:'pending'|'accepted';requestedByMe:boolean;createdAt:string};
 export type FriendOverview={profile:FriendProfile;connections:FriendConnection[]};
-export type FriendBoardRow={member_id:string;display_name:string;total_ms:number|null;studying:boolean|null;last_seen_at:string|null;is_me:boolean;shared:boolean};
+export type FriendBoardRow={member_id:string;title?:string;display_name:string;total_ms:number|null;studying:boolean|null;last_seen_at:string|null;is_me:boolean;shared:boolean};
 export type RankedFriend=FriendBoardRow&{rank:number|null};
 
 /** Ties share a position, and the next available place is skipped: 1, 1, 3. */

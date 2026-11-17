@@ -170,3 +170,11 @@
     margin-top: 10px;
   }
 }
+
+.app :is(.friends-view,.groups-view) > section.card.social-rank {grid-column:1 / -1}
+.app .social-rank .friend-rank-row {min-height:64px;border-radius:12px}
+.app .social-rank .friend-rank-user strong {display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.app .social-rank .friend-rank-number {color:#25655b;background:#e2f4ee;border-radius:10px}
+.app .social-rank .friend-rank-time {font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.app .shop-view label {display:grid;gap:5px;margin:10px 0}
+.app .shop-grid .small {margin:4px 5px 4px 0}

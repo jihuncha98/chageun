@@ -6,13 +6,14 @@ import {studyDay} from '../lib/study-day';
 import StudyDashboard from '../components/study-dashboard';
 import {readAppearance,appearanceStorageKeys,type Accent,type FontChoice} from '../lib/appearance';
 import {authErrorMessage,authReturnUrl,brandSubtitle} from '../lib/auth-ui';
+import {EquippedAppearance} from '../components/shop';
 import AdminPanel from '../components/admin-panel';
 import {BroadcastPopup,fetchMyBroadcasts} from '../components/broadcast-notices';
 import {stopPushBeforeLogout} from '../components/push-settings';
 import {fetchMyAdminNotices} from '../components/admin-notices';
 
-const tabs=['오늘','시험 대비','수행평가','통계','친구','그룹','알림','설정'];
-const tabIcons=['◷','▦','▤','▥','♧','◎','🔔','⚙'];
+const tabs=['오늘','시험 대비','수행평가','통계','친구','그룹','상점','알림','설정'];
+const tabIcons=['◷','▦','▤','▥','♧','◎','◇','🔔','⚙'];
 type AuthMode='login'|'signup'|'forgot'|'recovery';
 function PasswordFields({confirmation=false,autoComplete='new-password'}:{confirmation?:boolean;autoComplete?:string}) {
  return <><label>비밀번호<input name="password" type="password" autoComplete={autoComplete} minLength={8} maxLength={128} required placeholder="8자 이상"/></label>{confirmation&&<label>비밀번호 확인<input name="password_confirm" type="password" autoComplete="new-password" minLength={8} maxLength={128} required placeholder="같은 비밀번호를 다시 입력"/></label>}</>;
@@ -152,7 +153,7 @@ export default function Home(){
   <main><header><span>CHAGEUN <span className="header-separator">/</span> MY STUDY SPACE</span><button className="quiet" onClick={()=>setAppearanceTheme(!dark)} aria-pressed={dark}>{dark?'☀ 라이트 모드':'☾ 다크 모드'}</button></header>
    <section className="heading"><div><p className="eyebrow">CHAGEUN · MY STUDY SPACE</p><h1>{tab==='오늘'?'오늘의 공부':tab}</h1>{tab!=='오늘'&&<p>차근차근, 나만의 공부 공간</p>}</div><span className="badge">오늘도, 차근차근.</span></section>
    {authenticated&&session?<>
-    <div className="account-strip"><span>{session.user.email}</span><button className="small" onClick={()=>void logout()}>로그아웃</button></div>
+    <EquippedAppearance key={session.user.id} user={session.user.id}/><div className="account-strip"><span>{session.user.email}</span><button className="small" onClick={()=>void logout()}>로그아웃</button></div>
     {tab==='관리자'&&isAdmin?<AdminScreen><AdminPanel/></AdminScreen>:now&&<StudyDashboard key={session.user.id} userId={session.user.id} tab={tab} now={now.getTime()} profileUser={session.user} onProfileSaved={updateProfileUser} onUnreadCountChange={setUnreadCount} appearance={{dark,accent,font}} onAppearanceTheme={setAppearanceTheme} onAppearanceAccent={setAppearanceAccent} onAppearanceFont={setAppearanceFont}/>}
     <BroadcastPopup key={`broadcast-${session.user.id}`} userId={session.user.id}/>
    </>:<div className="grid auth-layout">

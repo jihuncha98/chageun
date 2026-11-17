@@ -1,10 +1,10 @@
 'use client';
-import GroupChat from './group-chat';
+
 import {useCallback,useEffect,useRef,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
 import {sharedStudyTime} from '../lib/live-board-time';
 import {studyDay} from '../lib/study-day';
-import {fetchVisibleNames,visibleLabel} from '../lib/visible-names';
+import {socialNames} from '../lib/visible-names';
 import {friendLastSeen,friendTime,validFriendCode} from '../lib/friends';
 import {clampGroupPage,GROUP_BOARD_PAGE_SIZE,groupPageCount,groupViewDescription,validGroupName,type GroupBoardRow,type GroupOverview} from '../lib/groups';
 
@@ -13,6 +13,7 @@ const initialOverview:GroupOverview={groups:[],invitations:[]};
 export default function GroupsView({now}:{now:number}){
  const [overview,setOverview]=useState<GroupOverview>(initialOverview);
  const [board,setBoard]=useState<GroupBoardRow[]>([]);
+ const [summary,setSummary]=useState<{total:number;active:number}|null>(null);
  const [boardReceivedAt,setBoardReceivedAt]=useState(0);
  const [selectedId,setSelectedId]=useState('');
  const [page,setPage]=useState(1);
@@ -56,22 +57,24 @@ export default function GroupsView({now}:{now:number}){
     if(boardError)throw boardError;
     nextBoard=(rows??[]) as GroupBoardRow[];
    }
-   const names=await fetchVisibleNames([
+   let totals:{total:number;active:number}|null={total:nextBoard.reduce((n,r)=>n+(r.shared?r.total_ms??0:0),0),active:nextBoard.filter(r=>r.shared&&r.studying).length};
+   if(total>GROUP_BOARD_PAGE_SIZE){
+    const result=await supabase.rpc('chageun_group_summary',{p_group:target});
+    totals=result.error?null:result.data;
+   }
+   const names=await socialNames([
     ...next.groups.flatMap(g=>[g.ownerId,...g.members.map(m=>m.userId),...g.pendingInvites.map(m=>m.userId)]),
     ...nextBoard.map(row=>row.member_id)
    ]).catch(()=>new Map());
-   const invitesResult=await supabase.rpc('chageun_invitation_owner_labels');
-   const inviteNames=new Map<string,string>(((invitesResult.data??[]) as {group_id:string;owner_name:string}[])
-     .map(row=>[row.group_id,row.owner_name] as const));
    const namedOverview:GroupOverview={...next,
-    invitations:next.invitations.map(inv=>({...inv,ownerName:inviteNames.get(inv.id)??inv.ownerName})),
     groups:next.groups.map(g=>({
     ...g,
-    members:g.members.map(m=>({...m,nickname:visibleLabel(names,m.userId,m.nickname)})),
-    pendingInvites:g.pendingInvites.map(m=>({...m,nickname:visibleLabel(names,m.userId,m.nickname)}))
+    members:g.members.map(m=>({...m,nickname:names.get(m.userId)?.display_name||'차근 사용자'})),
+    pendingInvites:g.pendingInvites.map(m=>({...m,nickname:names.get(m.userId)?.display_name||'차근 사용자'}))
    }))};
-   const namedBoard=nextBoard.map(row=>({...row,display_name:visibleLabel(names,row.member_id,row.display_name)}));
+   const namedBoard=nextBoard.map(row=>({...row,display_name:names.get(row.member_id)?.display_name||'차근 사용자',title:names.get(row.member_id)?.title||'차근 사용자'}));
    if(!mounted.current||req!==serial.current)return;
+   setSummary(totals);
    setShareEnabled((init.data as {shareEnabled?:boolean}|null)?.shareEnabled!==false);
    selectedRef.current=target;pageRef.current=number;
    setSelectedId(target);setPage(number);setOverview(namedOverview);setBoard(namedBoard);setBoardReceivedAt(Date.now());setError('');
@@ -119,30 +122,29 @@ export default function GroupsView({now}:{now:number}){
  return <div className="groups-view">
   <section className="card">
    <div className="section-title"><h2>함께 공부하는 그룹</h2><button className="small" disabled={busy||loading} onClick={()=>void refresh(true)}>새로고침</button></div>
-   <p>그룹을 만들고 친구 코드로 초대해 보세요. 초대를 받은 사람이 <strong>수락하면</strong> 그룹원 모두가 서로의 오늘 순공 시간과 공부 상태를 볼 수 있어요. 그룹은 날짜가 바뀌어도 유지돼요.</p>
    <p className="fine">그룹에 가입해도 1:1 친구가 자동 추가되지는 않지만, 그룹 안에서는 별도 친구 신청 없이 서로 연결돼요. 개인 할 일·시간표·과거 기록·이메일은 공유하지 않아요.</p>
    {loading&&<p role="status">그룹을 불러오는 중…</p>}
    {error&&<p role="alert" className="notice error">{error}</p>}
    {notice&&<p role="status" className="notice">{notice}</p>}
-   <form className="group-create-form" onSubmit={create}>
+   <details><summary>새 그룹 만들기</summary><form className="group-create-form" onSubmit={create}>
     <label>새 그룹 이름<input value={groupName} onChange={e=>setGroupName(e.target.value)} maxLength={40} minLength={2} placeholder="예: 함께 수능 준비" required/></label>
     <button className="primary compact" disabled={busy||loading||!validGroupName(groupName)}>+ 그룹 만들기</button>
-   </form>
+   </form></details>
   </section>
   {overview.invitations.length>0&&<section className="card below"><h2>받은 그룹 초대 · {overview.invitations.length}</h2>
-   {overview.invitations.map(inv=><div className="record-row" key={inv.id}><div className="record-details"><strong>{inv.name}</strong><p>{inv.ownerName}님이 그룹으로 초대했어요.</p></div><div className="actions"><button className="small blue" disabled={busy} onClick={()=>void act('group_respond',{p_group:inv.id,p_accept:true},'그룹 초대를 수락했어요.')}>참여</button><button className="small" disabled={busy} onClick={()=>void act('group_respond',{p_group:inv.id,p_accept:false},'그룹 초대를 거절했어요.')}>거절</button></div></div>)}
+   {overview.invitations.map(inv=><div className="record-row" key={inv.id}><div className="record-details"><strong>{inv.name}</strong><p>그룹 참여 요청이 도착했어요.</p></div><div className="actions"><button className="small blue" disabled={busy} onClick={()=>void act('group_respond',{p_group:inv.id,p_accept:true},'그룹 초대를 수락했어요.')}>참여</button><button className="small" disabled={busy} onClick={()=>void act('group_respond',{p_group:inv.id,p_accept:false},'그룹 초대를 거절했어요.')}>거절</button></div></div>)}
   </section>}
   {overview.groups.length>0&&<section className="card below"><div className="section-title"><h2>내 그룹</h2><span>{overview.groups.length}개 그룹</span></div>
    <div className="group-picker" role="group" aria-label="그룹 선택">{overview.groups.map(g=><button type="button" className="group-picker-button" aria-pressed={g.id===selectedId} onClick={()=>pick(g.id)} key={g.id}><strong>{g.name}</strong><small>{g.members.length}명 · {g.isOwner?'관리자':'그룹원'}</small></button>)}</div>
   </section>}
   {group&&<>
-   <section className="card below">
+   <section className="card below social-rank">
     <div className="section-title"><h2>{group.name}</h2><span>그룹원 {group.members.length}명</span></div>
-    <p>그룹의 순공 시간은 화면에서 초 단위로 갱신하고 서버 기록은 약 45초마다 확인해요. 한국 시간 오전 6시에 새 학습일로 시작하며 그룹 멤버십은 유지돼요.</p>
+    <h3>오늘의 순위</h3>{summary&&shareEnabled&&<div className="month-summary"><div>공개된 총 순공<strong>{friendTime((sharedStudyTime(summary.total,false,boardReceivedAt,now)??0)+summary.active*(sharedStudyTime(0,true,boardReceivedAt,now,navigator.onLine)??0))}</strong></div><div>공부 중<strong>{summary.active}명</strong></div></div>}
     {!shareEnabled&&<p className="notice">{groupViewDescription(false)}</p>}
     <div className="group-rank-list">{board.map(row=><article key={row.member_id} className={`friend-rank-row ${row.is_me?'friend-self':''}`}>
      <div className="friend-rank-number">{row.position===null?'—':`${row.position}위`}</div>
-     <div className="friend-rank-user"><strong>{row.display_name}{row.is_me?' (나)':''}</strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
+     <div className="friend-rank-user"><strong>{row.display_name}{row.is_me?' (나)':''} <em className="rank-title">{row.title}</em></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
      <div className="friend-rank-time">{friendTime(sharedStudyTime(row.total_ms,row.studying,boardReceivedAt,now,typeof navigator==='undefined'||navigator.onLine))}</div>
     </article>)}{board.length===0&&<p className="empty">표시할 순위가 없어요.</p>}</div>
     {pageCount>1&&<div className="record-pagination" role="navigation" aria-label="그룹 순위 페이지">
@@ -153,7 +155,7 @@ export default function GroupsView({now}:{now:number}){
      <button className="small" onClick={()=>changePage(pageCount)} disabled={busy||page===pageCount} aria-label="마지막 페이지">끝 »</button>
     </div>}
    </section>
-   <GroupChat key={group.id} groupId={group.id}/>
+
    <section className="card below"><div className="section-title"><h2>그룹원</h2><span>{group.members.length}명</span></div>
     {group.members.slice(0,memberShown).map(member=><div className="record-row" key={member.userId}>
      <div className="record-details"><strong>{member.nickname}</strong><p>{member.isOwner?'그룹 관리자':'그룹원'}</p></div>
