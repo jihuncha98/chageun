@@ -1,5 +1,5 @@
 /** Browser-only appearance preferences. No private study data is changed. */
-export const ACCENTS = ['blue','violet','mint','coral'] as const;
+export const ACCENTS = ['blue','violet','mint','coral','sand','slate','rose','forest'] as const;
 export type Accent = (typeof ACCENTS)[number];
 export const FONTS = ['sans','serif','rounded'] as const;
 export type FontChoice = (typeof FONTS)[number];

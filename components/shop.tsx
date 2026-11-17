@@ -20,14 +20,14 @@ export function EquippedAppearance({user}:{user:string}){
  useEffect(()=>{
   let live=true,version=0;
   const root=document.documentElement;
-  function apply(skin:string,theme:string){root.dataset.skin=skin;root.dataset.shopTheme=theme;}
+  function apply(skin:string,theme:string){root.dataset.skin='classic';root.dataset.shopTheme='standard';void skin;void theme;}
   const cache='chageun:equipped:'+user;
-  try{const cached=JSON.parse(localStorage.getItem(cache)??'null');if(cached)apply(cached.skin,cached.theme);}catch{}
+  try{const cached=JSON.parse(localStorage.getItem(cache)??'null');if(cached)apply('classic','standard');}catch{}
   async function sync(){if(document.hidden)return;const seq=++version;
    try{const result=await read(null);if(!live||seq!==version)return;
     const skin=result.items.find(i=>i.equipped&&i.kind==='skin')?.id??'classic';
     const theme=result.items.find(i=>i.equipped&&i.kind==='theme')?.id??'standard';
-    apply(skin,theme);localStorage.setItem(cache,JSON.stringify({skin,theme}));
+    apply('classic','standard');localStorage.setItem(cache,JSON.stringify({skin,theme}));
    }catch{/* Keep the last account-specific appearance offline. */}
   }
   void sync();const timer=setInterval(sync,60000);
@@ -64,7 +64,7 @@ export default function Shop({user=null}:{user?:string|null}){
  <section className="card shop-wallet"><h2>보유 크레딧</h2><strong className="shop-balance">{state.balance.toLocaleString()} C</strong><p>{state.rule?new Date(state.rule.starts).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})+'부터 '+state.rule.seconds+'초당 1 C · 하루 최대 '+state.rule.cap+' C':'자동 적립 시작 전'}</p>
  {user&&<><label>관리 사유<input value={reason} maxLength={150} onChange={e=>setReason(e.target.value)}/></label><label>크레딧 수량<input type="number" min="1" value={amount} onChange={e=>setAmount(e.target.value)}/></label>{['credit','debit'].map(a=><button key={a} className="small" disabled={busy||Number(amount)<1} onClick={()=>void submit(a,null,Number(amount))}>{actions[a]}</button>)}
  <details><summary>자동 적립 설정</summary><label>1 C당 공부 시간(초)<input type="number" min="1" value={seconds} onChange={e=>setSeconds(e.target.value)}/></label><label>하루 상한(C)<input type="number" min="0" value={cap} onChange={e=>setCap(e.target.value)}/></label><p>처음에는 저장 시점부터, 이후 변경은 다음 학습일 오전 6시부터 적용돼요. 상한 0은 지급 중지예요.</p><button className="small" disabled={busy||Number(seconds)<1||cap===''||Number(cap)<0} onClick={()=>void submit('rule',null,Number(seconds),{cap:Number(cap)})}>적립 기준 저장</button></details></>}</section>
- <div className="shop-tabs">{(Object.keys(labels) as Kind[]).map(k=><button key={k} className="small" aria-pressed={kind===k} onClick={()=>{setKind(k);setPreview(null);}}>{labels[k]}</button>)}</div>
+ <div className="shop-tabs">{(['title'] as Kind[]).map(k=><button key={k} className="small" aria-pressed={kind===k} onClick={()=>{setKind(k);setPreview(null);}}>{labels[k]}</button>)}</div>
  <div className="shop-grid">{state.items.filter(i=>i.kind===kind).map(i=>{
  const locked=i.level&&i.level>1&&!state.items.some(p=>p.kind==='title'&&p.level===i.level!-1&&p.owned);
  return <article key={i.id} className="card shop-product">{i.kind==='title'?<TitleEmblem level={i.level}/>:<div className="product-preview" data-product={i.id}>{i.kind==='skin'?<><span>집중 시간</span><strong>00:32:18</strong><span>수학 · 공부 중</span></>:<><span>오늘의 공부</span><strong>차근차근</strong><span>나의 근면성실</span></>}</div>}<h3>{i.level?'LV'+i.level+' · ':''}{i.label}</h3><p>{i.equipped?'장착 중':i.owned?'보유함':locked?'이전 칭호 필요':i.price===null?'가격 미정':i.price+' C'}</p>
