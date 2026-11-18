@@ -30,6 +30,7 @@ class AdminScreen extends Component<{children:ReactNode},{failure:string}> {
 }
 export default function Home(){
  const [tab,setTab]=useState('오늘');
+ const [showMore,setShowMore]=useState(false);
  const [unreadCount,setUnreadCount]=useState(0);
  const [adminUnread,setAdminUnread]=useState(0);
  const [broadcastUnread,setBroadcastUnread]=useState(0);
@@ -148,9 +149,24 @@ export default function Home(){
  const subtitle=brandSubtitle(authenticated,authenticated?session?.user.user_metadata:undefined);
  const visibleTabs=isAdmin?[...tabs,'관리자']:tabs;
  const visibleIcons=isAdmin?[...tabIcons,'⚑']:tabIcons;
- return <div className={dark?'app dark':'app'} data-accent={accent} data-font={font}>
-  <aside><a className="brand" href="#">차근<span>{subtitle}</span></a><nav aria-label="주 메뉴">{visibleTabs.map((t,i)=><button key={t} aria-current={tab===t?'page':undefined} onClick={()=>setTab(t)}><span>{visibleIcons[i]}</span>{t}{t==='알림'&&(unreadCount+adminUnread+broadcastUnread)>0&&authenticated&&<span className="nav-notice-count" aria-label={`읽지 않은 알림 ${unreadCount+adminUnread+broadcastUnread}개`}>{unreadCount+adminUnread+broadcastUnread>9?'9+':unreadCount+adminUnread+broadcastUnread}</span>}</button>)}</nav><div className="aside-bottom">작은 실천이 쌓이는 곳<br/><strong>오늘도, 차근차근.</strong></div></aside>
-  <main><header><span>CHAGEUN <span className="header-separator">/</span> MY STUDY SPACE</span><button className="quiet" onClick={()=>setAppearanceTheme(!dark)} aria-pressed={dark}>{dark?'☀ 라이트 모드':'☾ 다크 모드'}</button></header>
+ const notices=unreadCount+adminUnread+broadcastUnread;
+ const isMoreTab=visibleTabs.indexOf(tab)>=6;
+ function navButton(name:string,index:number){
+  return <button key={name} type="button" aria-current={tab===name?'page':undefined} onClick={()=>{setTab(name);setShowMore(false);}}>
+   <span aria-hidden="true">{visibleIcons[index]}</span>{name}
+   {name==='알림'&&notices>0&&authenticated&&<span className="nav-notice-count" aria-label={`읽지 않은 알림 ${notices}개`}>{notices>9?'9+':notices}</span>}
+  </button>;
+ }
+ return <div className={dark?'app dark bottom-nav-layout':'app bottom-nav-layout'} data-accent={accent} data-font={font} data-today={authenticated&&tab==='오늘'?true:undefined}>
+  <aside className="bottom-nav-shell"><nav aria-label="주 메뉴" onKeyDown={e=>{if(e.key==='Escape')setShowMore(false);}}>
+   {visibleTabs.slice(0,6).map(navButton)}
+   <button type="button" className={isMoreTab?'nav-more-active':''} aria-expanded={showMore} aria-controls="nav-more-panel" onClick={()=>setShowMore(open=>!open)}>
+    <span aria-hidden="true">⋯</span>더보기
+    {notices>0&&authenticated&&<span className="nav-notice-count" aria-label={`읽지 않은 알림 ${notices}개`}>{notices>9?'9+':notices}</span>}
+   </button>
+   <div id="nav-more-panel" hidden={!showMore}>{visibleTabs.slice(6).map((name,index)=>navButton(name,index+6))}</div>
+  </nav></aside>
+  <main><header><a className="today-brand" href="#" onClick={()=>{setTab('오늘');setShowMore(false);}}>차근</a><button className="quiet" onClick={()=>setAppearanceTheme(!dark)} aria-pressed={dark}>{dark?'☀ 라이트 모드':'☾ 다크 모드'}</button></header>
    <section className="heading"><div><p className="eyebrow">CHAGEUN · MY STUDY SPACE</p><h1>{tab==='오늘'?'오늘의 공부':tab}</h1>{tab!=='오늘'&&<p>차근차근, 나만의 공부 공간</p>}</div><span className="badge">오늘도, 차근차근.</span></section>
    {authenticated&&session?<>
     <EquippedAppearance key={session.user.id} user={session.user.id}/><div className="account-strip"><span>{session.user.email}</span><button className="small" onClick={()=>void logout()}>로그아웃</button></div>

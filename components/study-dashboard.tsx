@@ -4,7 +4,6 @@ import type {User} from '@supabase/supabase-js';
 import {createStudyStore,initialView,type StudyStore} from '../lib/study-store';
 import {studyDay} from '../lib/study-day';
 import {subjectPalette} from '../lib/subject-colors';
-import {kstClockSeconds,kstDateLabel} from '../lib/kst-clock';
 import {type Appearance,type Accent,type FontChoice} from '../lib/appearance';
 import ExamPlanning from './exam-planning';
 import AssessmentView,{AssessmentNotifications} from './assessment-view';
@@ -19,7 +18,7 @@ import ProfileSettings from './profile-settings';
 import FocusMode from './focus-mode';
 import {shouldShowFocusMode} from '../lib/focus-mode';
 import {ddayLabel,kstToday} from '../lib/exam-planning';
-import {DAY,activeEntry,alive,clock,cutEntry,dayStart,duration,localInput,nextDay,normalize,parseLocal,reusableTasks,reuseTask,scheduleNow,sliceDay,start,stop,subjectKey,total,uid,type Entry,type Study,type Task,type Lesson} from '../lib/study';
+import {DAY,activeEntry,alive,clock,cutEntry,dayStart,duration,localInput,nextDay,normalize,parseLocal,reusableTasks,reuseTask,scheduleNow,sliceDay,start,startSubject,stop,subjectKey,total,uid,type Entry,type Study,type Task,type Lesson} from '../lib/study';
 function describeRecord(row:object){const r=row as Record<string,unknown>;const status=r.deleted_at?' · 휴지통':'';if('start' in r&&typeof r.start==='number')return `${localInput(r.start).replace('T',' ')} → ${r.end===null?'측정 중':localInput(Number(r.end)).replace('T',' ')}${status}`;return `${r.title??r.name??r.label??r.text??'기록'}${'day' in r?' · '+r.day:''}${r.done?' · 완료':''}${r.archived?' · 보관 중':''}${status}`;}
 const weekdays=['일','월','화','수','목','금','토'];
 function field(f:FormData,key:string){return String(f.get(key)??'');}
@@ -37,6 +36,9 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,onUnreadCoun
  const v=useSyncExternalStore(store.subscribe,store.get,()=>initialView);const s=v.data;
  const unreadNotices=assessmentNotices(s.assessments,now).filter(n=>!s.noticeReceipts.some(r=>!r.deleted_at&&r.noticeId===n.id)).length;
  useEffect(()=>{onUnreadCountChange(unreadNotices);},[onUnreadCountChange,unreadNotices]);
+ const [todaySlide,setTodaySlide]=useState<'timer'|'records'>('timer');
+ const [subjectEditor,setSubjectEditor]=useState<string|null>(null);
+ const [showStartPicker,setShowStartPicker]=useState(false);
  const [selected,setSelected]=useState<string|null>(null);const day=selected??studyDay(new Date(now));
  const [editing,setEditing]=useState<Task|null>(null);const [entryEdit,setEntryEdit]=useState<Entry|null>(null);const [manual,setManual]=useState(false);const [editorTab,setEditorTab]=useState('');const [entryError,setEntryError]=useState('');const [choices,setChoices]=useState<Record<string,'local'|'remote'>>({});const [uiError,setUiError]=useState('');
  const [device,setDevice]=useState('');
@@ -45,10 +47,22 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,onUnreadCoun
  // Browser-only persisted device identity is read after hydration.
  // eslint-disable-next-line react-hooks/set-state-in-effect
  useEffect(()=>{try{let d=localStorage.getItem('chageun:device');if(!d){d=uid();localStorage.setItem('chageun:device',d);}setDevice(d);}catch{setUiError('기기 저장 공간을 사용할 수 없어요. 브라우저 설정을 확인해 주세요.');}},[]);
- const active=activeEntry(s);const subjects=alive(s.subjects);const tasks=alive(s.tasks).filter(t=>t.day===day);const scheduled=scheduleNow(s,now);
+ const active=activeEntry(s);const subjects=alive(s.subjects);const tasks=alive(s.tasks).filter(t=>t.day===day&&!t.subjectTimer);const scheduled=scheduleNow(s,now);
  const previousTasks=reusableTasks(s,day);const shownPreviousTasks=showAllPreviousTasks?previousTasks:previousTasks.slice(0,6);
  const subject=(id:string)=>s.subjects.find(x=>x.id===id)?.name??'과목';
- const taskLabel=(id:string|null)=>id?s.tasks.find(x=>x.id===id)?.title??'보관된 할 일':'이전 쪽잠 기록';
+ const taskById=new Map(s.tasks.map(task=>[task.id,task]));
+ const taskLabel=(id:string|null)=>{
+  if(!id)return '이전 쪽잠 기록';
+  const task=taskById.get(id);
+  return task?.subjectTimer?subject(task.subjectId):task?.title??'보관된 할 일';
+ };
+ const isToday=day===studyDay(new Date(now));
+ function changeDay(value:string|null){
+  setSelected(value);
+  setEditing(null);
+  setShowTaskForm(false);
+  setShowStartPicker(false);
+ }
  const write=(fn:(d:Study)=>void)=>{setUiError('');return store.update(fn);};
  // A file may take a moment to parse; a background sync can begin before the import finishes.
  // Wait for that sync to finish instead of rejecting the user's one-time file selection.
@@ -65,11 +79,21 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,onUnreadCoun
   return false;
  };
  function showEntryEditor(entry:Entry|null){setEditorTab(tab);setEntryError('');setEntryEdit(entry);setManual(!entry);window.setTimeout(()=>{const editor=document.getElementById('record-editor');editor?.scrollIntoView({behavior:'smooth',block:'start'});const first=editor?.querySelector('select,input') as HTMLElement|null;first?.focus({preventScroll:true});},0);}
- function begin(taskId:string){if(!device)return;if(v.review||v.remote){setUiError('먼저 충돌한 기록을 확인해 주세요.');return;}if(active?.device!==device&&active&&!confirm('다른 기기에서 실행한 타이머를 정지하고 전환할까요?'))return;write(d=>start(d,taskId,device,Date.now()));}
+ function begin(timer:{taskId:string}|{subjectId:string}){if(!device)return;if(v.review||v.remote){setUiError('먼저 충돌한 기록을 확인해 주세요.');return;}if(active?.device!==device&&active&&!confirm('다른 기기에서 실행한 타이머를 정지하고 전환할까요?'))return;setShowStartPicker(false);void write(d=>{const startedAt=Date.now();if('subjectId' in timer)startSubject(d,timer.subjectId,device,startedAt);else start(d,timer.taskId,device,startedAt);});}
  function mutateTask(t:Task,action:'done'|'delete'|'defer'){if(active?.taskId===t.id&&!confirm('실행 중인 타이머를 정지하고 처리할까요?'))return;write(d=>{if(activeEntry(d)?.taskId===t.id)stop(d,Date.now());const x=d.tasks.find(x=>x.id===t.id)!;if(action==='done')x.done=!x.done;else if(action==='delete')x.deleted_at=new Date().toISOString();else x.day=nextDay(x.day);});}
+ async function saveSubject(e:FormEvent<HTMLFormElement>){
+  e.preventDefault();
+  const name=normalize(field(new FormData(e.currentTarget),'name'));
+  const saved=await write(d=>{
+   const existing=alive(d.subjects).find(item=>item.id===subjectEditor);
+   if(existing){existing.name=name;existing.archived=false;}
+   else d.subjects.push({id:uid(),name,archived:false,deleted_at:null});
+  });
+  if(saved)setSubjectEditor(null);
+ }
  async function saveTask(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const title=normalize(field(f,'title'));const name=normalize(field(f,'subject'));const id=editing?.id;const form=e.currentTarget;const saved=await write(d=>{let sub=alive(d.subjects).find(x=>subjectKey(x.name)===subjectKey(name));if(!sub){sub={id:uid(),name,archived:false,deleted_at:null};d.subjects.push(sub);}else if(sub.archived)sub.archived=false;if(id){const t=d.tasks.find(x=>x.id===id)!;t.title=title;t.subjectId=sub.id;}else d.tasks.push({id:uid(),day,subjectId:sub.id,title,done:false,deleted_at:null});});if(saved){setEditing(null);setShowTaskForm(false);form.reset();}}
  async function saveEntry(e:FormEvent<HTMLFormElement>){e.preventDefault();setEntryError('');try{const f=new FormData(e.currentTarget);const startTime=parseLocal(field(f,'start'));const endTime=parseLocal(field(f,'end'));const saved=await write(d=>{if(entryEdit){const x=d.entries.find(x=>x.id===entryEdit.id)!;if(x.end===null)throw Error('타이머 정지 후 수정해 주세요.');x.start=startTime;x.end=endTime;}else d.entries.push({id:uid(),deleted_at:null,taskId:field(f,'task'),kind:'study',start:startTime,end:endTime,confirmed:startTime,device,napMinutes:20});});if(saved){setEntryEdit(null);setManual(false);setEditorTab('');}else setEntryError(store.get().error||'기록을 저장하지 못했어요. 입력 내용을 확인해 주세요.');}catch(error){setEntryError(error instanceof Error?error.message:'저장 중 오류가 발생했어요.');}}
- const recordEditor=(editorTab===tab&&(manual||entryEdit))?<section id="record-editor" key={entryEdit?.id??'manual'} className="card below editor"><h2>{entryEdit?'공부 시간 수정':'공부 기록 직접 추가'}</h2><form onSubmit={saveEntry} onInvalid={()=>setEntryError('할 일과 시작·종료 시각을 모두 올바르게 입력해 주세요.')}>{!entryEdit&&<label>할 일<select name="task" required><option value="">선택해 주세요</option>{alive(s.tasks).map(t=><option value={t.id} key={t.id}>{t.day} · {t.title}</option>)}</select></label>}<div className="two"><label>시작 (한국 시간)<input name="start" type="datetime-local" step="1" required defaultValue={entryEdit?localInput(entryEdit.start):''}/></label><label>종료 (한국 시간)<input name="end" type="datetime-local" step="1" required defaultValue={entryEdit?localInput(entryEdit.end??now):''}/></label></div><div className="actions"><button className="primary compact" disabled={v.busy}>{v.busy?'저장 중…':'저장'}</button><button type="button" className="small" onClick={()=>{setEntryEdit(null);setManual(false);setEntryError('');setEditorTab('');}}>닫기</button></div>{entryError&&<p role="alert" className="notice error">{entryError}</p>}</form>{entryEdit&&<form className="below" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const saved=await write(d=>cutEntry(d,entryEdit.id,parseLocal(field(f,'from')),parseLocal(field(f,'to'))));if(saved){setEntryEdit(null);setManual(false);setEditorTab('');}}}><h3>잠든 시간 빼기</h3><div className="two"><label>뺄 구간 시작<input name="from" type="datetime-local" step="1" required defaultValue={localInput(entryEdit.start)}/></label><label>뺄 구간 종료<input name="to" type="datetime-local" step="1" required defaultValue={localInput(entryEdit.end??now)}/></label></div><button className="small" disabled={v.busy}>이 구간 제외</button></form>}</section>:null;
+ const recordEditor=(editorTab===tab&&(manual||entryEdit))?<section id="record-editor" key={entryEdit?.id??'manual'} className="card below editor"><h2>{entryEdit?'공부 시간 수정':'공부 기록 직접 추가'}</h2><form onSubmit={saveEntry} onInvalid={()=>setEntryError('할 일과 시작·종료 시각을 모두 올바르게 입력해 주세요.')}>{!entryEdit&&<label>할 일<select name="task" required><option value="">선택해 주세요</option>{alive(s.tasks).map(t=><option value={t.id} key={t.id}>{t.subjectTimer?subject(t.subjectId):`${t.day} · ${t.title}`}</option>)}</select></label>}<div className="two"><label>시작 (한국 시간)<input name="start" type="datetime-local" step="1" required defaultValue={entryEdit?localInput(entryEdit.start):''}/></label><label>종료 (한국 시간)<input name="end" type="datetime-local" step="1" required defaultValue={entryEdit?localInput(entryEdit.end??now):''}/></label></div><div className="actions"><button className="primary compact" disabled={v.busy}>{v.busy?'저장 중…':'저장'}</button><button type="button" className="small" onClick={()=>{setEntryEdit(null);setManual(false);setEntryError('');setEditorTab('');}}>닫기</button></div>{entryError&&<p role="alert" className="notice error">{entryError}</p>}</form>{entryEdit&&<form className="below" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const saved=await write(d=>cutEntry(d,entryEdit.id,parseLocal(field(f,'from')),parseLocal(field(f,'to'))));if(saved){setEntryEdit(null);setManual(false);setEditorTab('');}}}><h3>잠든 시간 빼기</h3><div className="two"><label>뺄 구간 시작<input name="from" type="datetime-local" step="1" required defaultValue={localInput(entryEdit.start)}/></label><label>뺄 구간 종료<input name="to" type="datetime-local" step="1" required defaultValue={localInput(entryEdit.end??now)}/></label></div><button className="small" disabled={v.busy}>이 구간 제외</button></form>}</section>:null;
  const entries=alive(s.entries).filter(e=>{const x=sliceDay(e,day,now);return x.end>x.start||e.end===null&&studyDay(new Date(e.start))===day;}).sort((a,b)=>a.start-b.start);
  const nextExam=alive(s.exams).filter(x=>x.date>=kstToday(now)).sort((a,b)=>a.date.localeCompare(b.date))[0];
  const confirmation=active&&active.kind==='study'&&now-active.confirmed>=150*60000;
@@ -102,12 +126,49 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,onUnreadCoun
  {(v.review||v.remote)&&<section className="card conflict"><h2>기록 확인이 필요해요</h2><p>서로 다른 기기의 기록을 자동으로 버리지 않아요. 충돌한 항목은 선택하고, 겹친 시간은 통계 메뉴의 측정 기록 목록에서 수정해 주세요. 해결 전에는 합계를 표시하지 않아요.</p><button className="small" onClick={()=>download('chageun-conflict-backup.json',store.getLocal())}>기기 원본 내려받기</button>{conflict.map(c=><div key={`${c.collection}:${c.id}`} className="conflict-item"><p>{c.collection==='entries'?'타이머 기록':c.collection==='tasks'?'할 일':c.collection==='subjects'?'과목':'설정'} · {c.id.slice(0,8)}</p><details><summary>두 기록 비교</summary><p>이 기기: {describeRecord(c.local)}</p><p>다른 기기: {describeRecord(c.remote)}</p></details><select aria-label="사용할 기록" value={choices[`${c.collection}:${c.id}`]??''} onChange={e=>setChoices({...choices,[`${c.collection}:${c.id}`]:e.target.value as 'local'|'remote'})}><option value="">선택해 주세요</option><option value="local">이 기기의 변경 사용</option><option value="remote">다른 기기의 변경 사용</option></select></div>)}{v.remote&&<button className="primary" onClick={()=>void store.resolve(choices)}>선택한 내용으로 합치기</button>}</section>}
  <div className={`workspace-tab-content ${tab==='오늘'?'chageun-today':''}`} key={tab}>
  {!v.ready?<section className="card"><h2>공부 데이터를 준비하고 있어요</h2><p>처음에는 인터넷 연결과 Supabase SQL 적용이 필요해요.</p></section>:tab==='오늘'?<>
- <section className="exam-today-banner" aria-label="다가오는 시험"><div><span className="eyebrow">다가오는 시험</span><h2>{nextExam?nextExam.name:'예정된 시험이 없어요'}</h2><p>{nextExam?`${nextExam.date}`:'시험 대비 메뉴에서 시험 날짜를 등록해 보세요.'}</p></div><strong className="exam-countdown">{nextExam?ddayLabel(nextExam.date,now):'D-day'}</strong></section>
- <div className="today-controls"><div className="daybar"><label className="daybar-date">학습일<input aria-label="조회 학습일" type="date" value={day} onChange={e=>e.target.value&&setSelected(e.target.value)}/></label><button className="small daybar-today" onClick={()=>setSelected(null)}>오늘</button><span className="daybar-range" title="학습일은 오전 6시에 시작해요">06:00 기준</span></div><div className="live-clock" aria-label={`현재 한국 시간 ${kstClockSeconds(now)}`}><span className="eyebrow">현재 시각</span><strong>{kstClockSeconds(now)}</strong><small>{kstDateLabel(now)}</small></div></div>
- <section className="today-top"><div className="summary-card"><span className="summary-icon" aria-hidden="true">◷</span><p>{day===studyDay(new Date(now))?'오늘':'선택한 날'} 순공 시간</p><strong>{v.review?'확인 필요':duration(total(s,day,now))}</strong><small>{v.pending?'동기화 대기 중':'기록 저장됨'}</small></div><div className="card complete-card"><span className="summary-icon" aria-hidden="true">✓</span><p>완료한 할 일</p><strong>{tasks.filter(t=>t.done).length}<small> / {tasks.length}</small></strong><div className="progress-track" role="progressbar" aria-label="오늘 할 일 완료 비율" aria-valuenow={tasks.filter(t=>t.done).length} aria-valuemin={0} aria-valuemax={tasks.length||1}><span style={{width:`${tasks.length?tasks.filter(t=>t.done).length/tasks.length*100:0}%`}}/></div></div><div className="card current-class"><p className="eyebrow">지금 학교에서는</p><h2>{scheduled.current?.label??'등록된 일정 없음'}</h2><p>{scheduled.current?`${scheduled.current.start}–${scheduled.current.end} ${scheduled.current.room}`:'학교 일정 없음'}</p><p>다음: {scheduled.next?`${scheduled.next.start} ${scheduled.next.label} ${scheduled.next.room}`:'오늘 남은 일정 없음'}</p></div></section>
- <section className="card running"><div><p className="eyebrow">지금 할 일</p><h2>{active?taskLabel(active.taskId):'할 일을 골라 시작해 보세요'}</h2><p>{active?`${clock(active.start)} 시작 · ${active.device===device?'이 기기':'다른 기기'}에서 시작`:'할 일을 시작하면 집중 모드로 전환돼요.'}</p></div><strong className="timer">{active?duration(now-active.start):'00:00:00'}</strong>{active&&<button className="primary compact" disabled={v.busy} onClick={()=>write(d=>stop(d,Date.now()))}>정지</button>}</section>
+ <div className="today-date-row">
+  <button className="small" aria-label="이전 학습일" onClick={()=>changeDay(studyDay(new Date(dayStart(day)-DAY)))}>‹</button>
+  <input aria-label="조회 학습일" type="date" value={day} onChange={e=>{if(e.target.value)changeDay(e.target.value);}}/>
+  <button className="small" aria-label="다음 학습일" onClick={()=>changeDay(nextDay(day))}>›</button>
+  {!isToday&&<button className="small" onClick={()=>changeDay(null)}>오늘</button>}
+ </div>
+ <div hidden={todaySlide!=='timer'} id="today-timer-panel">
+  <div className="today-timer-hero">
+   <span>{isToday?'오늘':'선택한 날'} 순공 시간</span>
+   <strong>{v.review||v.remote?'확인 필요':duration(total(s,day,now))}</strong>
+   {isToday&&<button type="button" className="today-hero-start" aria-label={active?'타이머 정지':'타이머 시작할 과목 선택'} aria-expanded={active?undefined:showStartPicker} disabled={v.busy||!device||v.review||!!v.remote} onClick={()=>active?void write(d=>stop(d,Date.now())):setShowStartPicker(open=>!open)}>{active?'■':'▶'}</button>}
+   {isToday&&showStartPicker&&<select aria-label="타이머 시작할 과목" value="" onChange={e=>{if(e.target.value)begin({subjectId:e.target.value});}}>
+    <option value="">타이머 시작할 과목 선택</option>
+    {subjects.filter(item=>!item.archived).map(item=><option value={item.id} key={item.id}>{item.name}</option>)}
+   </select>}
+  </div>
  {confirmation&&<div role="alert" className="notice attention">150분이 지났어요. 계속 공부 중인가요? 타이머는 계속 기록하고 있어요.<button className="small" onClick={()=>write(d=>{const e=activeEntry(d);if(e)e.confirmed=Date.now();})}>계속 공부 중</button></div>}
- <div className="study-columns"><div><section className="card task-list-card">
+  <div className="today-panel-grid">
+   <section className="card today-subject-card" aria-label="과목별 타이머">
+    <div className="section-title"><h2>과목별 타이머</h2><button className="small" type="button" onClick={()=>setSubjectEditor('+')}>+ 과목 추가</button></div>
+    {subjectEditor!==null&&<form key={subjectEditor} className="today-subject-form" onSubmit={saveSubject}>
+     <label>과목명<input name="name" required maxLength={80} defaultValue={subjects.find(item=>item.id===subjectEditor)?.name??''}/></label>
+     <div className="actions"><button className="small" disabled={v.busy}>저장</button><button type="button" className="small" onClick={()=>setSubjectEditor(null)}>취소</button></div>
+    </form>}
+    {subjects.filter(item=>!item.archived).map(item=>{
+     const running=active?.taskId!=null&&taskById.get(active.taskId)?.subjectId===item.id;
+     const elapsed=entries.reduce((sum,entry)=>{
+      if(entry.kind!=='study'||!entry.taskId||taskById.get(entry.taskId)?.subjectId!==item.id)return sum;
+      const period=sliceDay(entry,day,now);
+      return sum+Math.max(0,period.end-period.start);
+     },0);
+     return <div className="today-subject-row" key={item.id}>
+      <button className="today-subject-play" type="button" style={{background:subjectPalette(item.id,s.subjects).solid}} aria-label={`${item.name} 타이머 ${running?'정지':'시작'}`} disabled={!isToday||v.busy||!device||v.review||!!v.remote} onClick={()=>running?void write(d=>stop(d,Date.now())):begin({subjectId:item.id})}>{running?'■':'▶'}</button>
+      <strong>{item.name}</strong><time>{v.review||v.remote?'확인 필요':duration(elapsed)}</time>
+      <details className="task-menu-wrap"><summary className="task-menu-trigger" aria-label={`${item.name} 메뉴`}>⋯</summary><div className="task-menu-items">
+       <button type="button" onClick={e=>{e.currentTarget.closest('details')?.removeAttribute('open');setSubjectEditor(item.id);}}>이름 수정</button>
+       <button type="button" disabled={running||v.busy} onClick={e=>{e.currentTarget.closest('details')?.removeAttribute('open');void write(d=>{const subject=d.subjects.find(x=>x.id===item.id);if(subject)subject.archived=true;});}}>목록에서 숨기기</button>
+      </div></details>
+     </div>;
+    })}
+    {subjects.some(item=>item.archived)&&<details className="today-hidden-subjects"><summary>숨긴 과목</summary>{subjects.filter(item=>item.archived).map(item=><button className="small" key={item.id} disabled={v.busy} onClick={()=>void write(d=>{const subject=d.subjects.find(x=>x.id===item.id);if(subject)subject.archived=false;})}>{item.name} 다시 표시</button>)}</details>}
+   </section>
+   <section className="card task-list-card">
  <div className="section-title task-heading">
   <div className="task-heading-label"><span className="task-heading-icon" aria-hidden="true">▣</span><h2>오늘의 할 일</h2><span className="task-count">{tasks.length}개</span></div>
   <button className="small task-add-toggle" type="button" aria-expanded={showTaskForm||!!editing} onClick={()=>{if(showTaskForm||editing){setEditing(null);setShowTaskForm(false);}else{setEditing(null);setShowTaskForm(true);}}}>{showTaskForm||editing?'닫기':'+ 할 일 추가'}</button>
@@ -130,9 +191,9 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,onUnreadCoun
    <button className="task-checkbox" type="button" aria-label={`${t.title} ${t.done?'완료 취소':'완료 처리'}`} aria-pressed={t.done} title={t.done?'완료 취소':'완료 처리'} disabled={v.busy||taskRunning} onClick={()=>mutateTask(t,'done')}>{t.done?'✓':''}</button>
    <span className="subject-tag task-subject-tag" style={{background:color.soft,color:color.ink,'--subject-soft':color.soft,boxShadow:'inset 3px 0 '+color.solid} as CSSProperties} title={taskSubject}>{taskSubject}</span>
    <strong className="task-title" title={t.title}>{t.title}</strong>
-   <button className="task-time-action" type="button" title={taskRunning?'타이머 정지':t.done?'완료를 취소한 후 시작할 수 있어요':'이 할 일의 타이머 시작'} aria-label={`${t.title} · ${taskTime} · ${taskRunning?'정지':t.done?'완료됨':'타이머 시작'}`} disabled={v.busy||(!taskRunning&&!canStart)} onClick={()=>taskRunning?void write(d=>stop(d,Date.now())):begin(t.id)}><span className="task-time-play" aria-hidden="true">{taskRunning?'■':'▶'}</span><span>{taskTime}</span></button>
+   <button className="task-time-action" type="button" title={taskRunning?'타이머 정지':t.done?'완료를 취소한 후 시작할 수 있어요':'이 할 일의 타이머 시작'} aria-label={`${t.title} · ${taskTime} · ${taskRunning?'정지':t.done?'완료됨':'타이머 시작'}`} disabled={v.busy||(!taskRunning&&!canStart)} onClick={()=>taskRunning?void write(d=>stop(d,Date.now())):begin({taskId:t.id})}><span className="task-time-play" aria-hidden="true">{taskRunning?'■':'▶'}</span><span>{taskTime}</span></button>
    <details className="task-menu-wrap"><summary className="task-menu-trigger" aria-label={`${t.title} 더보기`} title="할 일 더보기">⋯</summary><div className="task-menu-items">
-    <button type="button" disabled={v.busy||(!taskRunning&&!canStart)} onClick={e=>{e.currentTarget.closest('details')?.removeAttribute('open');if(taskRunning)void write(d=>stop(d,Date.now()));else begin(t.id);}}>{taskRunning?'■ 타이머 정지':'▶ 타이머 시작'}</button>
+    <button type="button" disabled={v.busy||(!taskRunning&&!canStart)} onClick={e=>{e.currentTarget.closest('details')?.removeAttribute('open');if(taskRunning)void write(d=>stop(d,Date.now()));else begin({taskId:t.id});}}>{taskRunning?'■ 타이머 정지':'▶ 타이머 시작'}</button>
     <button type="button" onClick={e=>{e.currentTarget.closest('details')?.removeAttribute('open');setEditing(t);setShowTaskForm(true);}} >수정</button>
     <button type="button" disabled={v.busy} onClick={e=>{e.currentTarget.closest('details')?.removeAttribute('open');mutateTask(t,'defer');}}>다음 날로</button>
     <button type="button" disabled={v.busy} onClick={e=>{e.currentTarget.closest('details')?.removeAttribute('open');mutateTask(t,'delete');}}>휴지통</button>
@@ -145,11 +206,28 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,onUnreadCoun
   {showReusePanel&&<div className="reuse-panel task-reuse-expanded">{previousTasks.length?<><div className="reuse-list">{shownPreviousTasks.map(t=><button key={t.id} className="small reuse-option" type="button" disabled={v.busy||v.review||!!v.remote} title={`${subject(t.subjectId)} · ${t.title} — ${day}에 추가`} onClick={()=>void write(d=>{reuseTask(d,t.id,day);})}><span>＋</span><span className="reuse-label"><small>{subject(t.subjectId)}</small><strong>{t.title}</strong></span></button>)}</div>{previousTasks.length>6&&<button type="button" className="small reuse-more" onClick={()=>setShowAllPreviousTasks(x=>!x)}>{showAllPreviousTasks?'간단히 보기':`이전 할 일 ${previousTasks.length-6}개 더 보기`}</button>}</>:<p className="fine">재사용할 이전 할 일이 없습니다.</p>}</div>}
  </div>
  </section>
- <section className="card below"><h2>하루 메모</h2><form key={day+s.notes.find(n=>n.day===day)?.text} onSubmit={e=>{e.preventDefault();const text=field(new FormData(e.currentTarget),'note');write(d=>{const note=d.notes.find(n=>n.day===day&&!n.deleted_at);if(note)note.text=text;else d.notes.push({id:uid(),day,text,deleted_at:null});});}}><label>오늘 기억할 것<textarea name="note" maxLength={10000} defaultValue={alive(s.notes).find(n=>n.day===day)?.text??''} placeholder="오늘 잘한 일, 내일 기억할 것"/></label><button className="small" disabled={v.busy}>메모 저장</button></form></section>
- </div><section className="card timeline-card"><div className="section-title"><h2>실제 공부 기록</h2><button className="small" onClick={()=>showEntryEditor(null)}>+ 직접 기록</button></div><div className="timeline-legend">{Array.from(new Set(entries.filter(e=>e.kind==='study').map(e=>{const t=s.tasks.find(t=>t.id===e.taskId);return t?.subjectId??'unknown';}))).map(id=><span key={id}><i style={{background:subjectPalette(id,s.subjects).solid}}/>{subject(id)}</span>)}</div><div className="timeline-scroll"><div className="timeline">{Array.from({length:49},(_,i)=><div className="tick" style={{top:i*28}} key={i}><span>{`${Math.floor((360+i*30)%1440/60).toString().padStart(2,'0')}:${i%2?'30':'00'}`}</span></div>)}{entries.map(e=>{const x=sliceDay(e,day,now);const t=s.tasks.find(t=>t.id===e.taskId);return <button key={e.id} className={`time-block ${e.kind==='nap'?'nap':''}`} style={{top:(x.start-dayStart(day))/DAY*1344,height:Math.max(3,(x.end-x.start)/DAY*1344),background:e.kind==='nap'?'#64748b':subjectPalette(t?.subjectId??'unknown',s.subjects).solid}} title={`${taskLabel(e.taskId)} ${clock(e.start)}–${e.end?clock(e.end):'측정 중'}`} onClick={()=>{if(e.end===null){setUiError('정지한 뒤 기록을 수정할 수 있어요.');return;}showEntryEditor(e);}}>{taskLabel(e.taskId)}</button>;})}</div></div></section></div>
-
- {recordEditor}
- <section className="card below"><h2>오늘 학교 시간표</h2><div className="school-list">{scheduled.list.map(l=><div key={l.id} className={l.id===scheduled.current?.id?'current':''}><time>{l.start}–{l.end}</time><strong>{l.label}</strong><span>{l.room}</span></div>)}</div></section>
+  </div>
+ </div>
+ <div hidden={todaySlide!=='records'} id="today-records-panel">
+  <div className="today-panel-grid today-agenda-grid">
+   <section className="exam-today-banner" aria-label="다가오는 시험"><div><span className="eyebrow">다가오는 시험</span><h2>{nextExam?nextExam.name:'예정된 시험이 없어요'}</h2><p>{nextExam?`${nextExam.date}`:'시험 대비 메뉴에서 시험 날짜를 등록해 보세요.'}</p></div><strong className="exam-countdown">{nextExam?ddayLabel(nextExam.date,now):'D-day'}</strong></section>
+   <section className="card today-school">
+    <h2>지금 학교 시간표</h2>
+    <strong>{scheduled.current?.label??'진행 중인 일정 없음'}</strong>
+    {scheduled.current&&<p>{scheduled.current.start}–{scheduled.current.end} {scheduled.current.room}</p>}
+    {scheduled.next&&<p>다음 · {scheduled.next.start} {scheduled.next.label} {scheduled.next.room}</p>}
+   </section>
+  </div>
+  <div className="today-panel-grid today-record-grid">
+   <section className="card timeline-card"><div className="section-title"><h2>실제 공부 기록</h2><button className="small" onClick={()=>showEntryEditor(null)}>+ 직접 기록</button></div><div className="timeline-legend">{Array.from(new Set(entries.filter(e=>e.kind==='study').map(e=>{const t=s.tasks.find(t=>t.id===e.taskId);return t?.subjectId??'unknown';}))).map(id=><span key={id}><i style={{background:subjectPalette(id,s.subjects).solid}}/>{subject(id)}</span>)}</div><div className="timeline-scroll"><div className="timeline">{Array.from({length:49},(_,i)=><div className="tick" style={{top:i*28}} key={i}><span>{`${Math.floor((360+i*30)%1440/60).toString().padStart(2,'0')}:${i%2?'30':'00'}`}</span></div>)}{entries.map(e=>{const x=sliceDay(e,day,now);const t=s.tasks.find(t=>t.id===e.taskId);return <button key={e.id} className={`time-block ${e.kind==='nap'?'nap':''}`} style={{top:(x.start-dayStart(day))/DAY*1344,height:Math.max(3,(x.end-x.start)/DAY*1344),background:e.kind==='nap'?'#64748b':subjectPalette(t?.subjectId??'unknown',s.subjects).solid}} title={`${taskLabel(e.taskId)} ${clock(e.start)}–${e.end?clock(e.end):'측정 중'}`} onClick={()=>{if(e.end===null){setUiError('정지한 뒤 기록을 수정할 수 있어요.');return;}showEntryEditor(e);}}>{taskLabel(e.taskId)}</button>;})}</div></div></section>
+   <section className="card today-memo"><h2>하루 메모</h2><form key={day+s.notes.find(n=>n.day===day)?.text} onSubmit={e=>{e.preventDefault();const text=field(new FormData(e.currentTarget),'note');write(d=>{const note=d.notes.find(n=>n.day===day&&!n.deleted_at);if(note)note.text=text;else d.notes.push({id:uid(),day,text,deleted_at:null});});}}><label>오늘 기억할 것<textarea name="note" maxLength={10000} defaultValue={alive(s.notes).find(n=>n.day===day)?.text??''} placeholder="오늘 잘한 일, 내일 기억할 것"/></label><button className="small" disabled={v.busy}>메모 저장</button></form></section>
+  </div>
+  {recordEditor}
+ </div>
+ <div className="today-slide-switch" role="group" aria-label="오늘 화면 선택">
+  <button type="button" aria-controls="today-timer-panel" aria-pressed={todaySlide==='timer'} onClick={()=>setTodaySlide('timer')}>타이머 · 할 일</button>
+  <button type="button" aria-controls="today-records-panel" aria-pressed={todaySlide==='records'} onClick={()=>setTodaySlide('records')}>기록 · 일정</button>
+ </div>
  </>:tab==='시험 대비'?<ExamPlanning data={s} write={write} busy={v.busy} now={now}/>:tab==='수행평가'?<AssessmentView data={s} write={write} busy={v.busy} now={now}/>:tab==='알림'?<><AssessmentNotifications data={s} write={write} busy={v.busy} now={now}/><AdminNotices/><BroadcastInbox/></>:tab==='통계'?<><StudyStatistics userId={profileUser.id} data={s} base={store.getLocal()?.base??s} now={now} review={v.review||!!v.remote} pending={v.pending} busy={v.busy} onEditEntry={showEntryEditor} onStopEntry={e=>void write(d=>{const x=d.entries.find(x=>x.id===e.id);if(x&&x.end===null)x.end=Date.now();})} onDeleteEntry={e=>{if(confirm('이 기록을 휴지통으로 옮길까요? 순공 시간에서 제외됩니다.'))void write(d=>{const x=d.entries.find(x=>x.id===e.id);if(x){x.end=x.end??Date.now();x.deleted_at=new Date().toISOString();}});}}/>{recordEditor}</>:tab==='설정'?<><ProfileSettings key={profileUser.id} user={profileUser} onSaved={onProfileSaved}/><Settings data={s} write={write} importWrite={importWrite} getSaveError={()=>store.get().error||store.get().status} busy={v.busy} onBackup={()=>download(`chageun-backup-${new Date(now+9*3600000).toISOString().slice(0,10)}.json`,{format:'chageun-data-export-v1',exportedAt:new Date(now).toISOString(),syncStatus:v.status,data:store.getLocal()?.work??s})} {...appearanceControls}/></>:tab==='상점'?<Shop/>:tab==='친구'?<FriendsView now={now}/>:tab==='그룹'?<GroupsView now={now}/>:<section className="card"><h2>메뉴를 찾을 수 없어요</h2><p>다른 메뉴를 선택해 주세요.</p></section>}
  </div>
  </>;

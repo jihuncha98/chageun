@@ -4,7 +4,7 @@ import {validCalendarDate} from './exam-planning';
 export const DAY = 86400000;
 export type Row = {id:string; deleted_at:string|null};
 export type Subject = Row & {name:string; archived:boolean; colorIndex?:number};
-export type Task = Row & {day:string; subjectId:string; title:string; done:boolean};
+export type Task = Row & {day:string; subjectId:string; title:string; done:boolean; subjectTimer?:true};
 export type Entry = Row & {taskId:string|null; kind:'study'|'nap'; start:number; end:number|null; confirmed:number; device:string; napMinutes:number};
 export type Lesson = Row & {weekday:number; start:string; end:string; label:string; room:string};
 export type Note = Row & {day:string; text:string};
@@ -53,11 +53,11 @@ export function validate(s:Study){
 export function reusableTasks(s:Study,day:string):Task[]{
  dayStart(day);
  const available=new Set(alive(s.subjects).map(x=>x.id));
- const existing=new Set(alive(s.tasks).filter(t=>t.day===day).map(t=>`${t.subjectId}\u0000${normalize(t.title).toLocaleLowerCase()}`));
+ const existing=new Set(alive(s.tasks).filter(t=>t.day===day&&!t.subjectTimer).map(t=>`${t.subjectId}\u0000${normalize(t.title).toLocaleLowerCase()}`));
  const seen=new Set<string>();
  return alive(s.tasks)
   .map((task,index)=>({task,index}))
-  .filter(({task})=>task.day<day&&available.has(task.subjectId))
+  .filter(({task})=>!task.subjectTimer&&task.day<day&&available.has(task.subjectId))
   .sort((a,b)=>b.task.day.localeCompare(a.task.day)||b.index-a.index)
   .filter(({task})=>{
    const key=`${task.subjectId}\u0000${normalize(task.title).toLocaleLowerCase()}`;
@@ -69,11 +69,11 @@ export function reusableTasks(s:Study,day:string):Task[]{
 /** Copy only the subject and title: never copy completion state or timer entries. */
 export function reuseTask(s:Study,sourceId:string,day:string):Task {
  dayStart(day);
- const template=alive(s.tasks).find(t=>t.id===sourceId);
+ const template=alive(s.tasks).find(t=>t.id===sourceId&&!t.subjectTimer);
  if(!template)throw Error('이전 할 일을 찾을 수 없어요.');
  const sub=alive(s.subjects).find(x=>x.id===template.subjectId);
  if(!sub)throw Error('과목을 찾을 수 없어요.');
- if(alive(s.tasks).some(t=>t.day===day&&t.subjectId===template.subjectId&&normalize(t.title).toLocaleLowerCase()===normalize(template.title).toLocaleLowerCase()))throw Error('이 날짜에 같은 할 일이 이미 있어요.');
+ if(alive(s.tasks).some(t=>!t.subjectTimer&&t.day===day&&t.subjectId===template.subjectId&&normalize(t.title).toLocaleLowerCase()===normalize(template.title).toLocaleLowerCase()))throw Error('이 날짜에 같은 할 일이 이미 있어요.');
  const copy:Task={id:uid(),deleted_at:null,day,subjectId:template.subjectId,title:template.title,done:false};
  s.tasks.push(copy);
  if(sub.archived)sub.archived=false;
@@ -81,6 +81,18 @@ export function reuseTask(s:Study,sourceId:string,day:string):Task {
 }
 export function stop(s:Study,now:number){const e=activeEntry(s);if(e){if(now<e.start)throw Error('기기 시각이 시작 시각보다 이전이에요. 시계를 확인해 주세요.');e.end=now;}}
 export function start(s:Study,taskId:string,device:string,now:number){const t=s.tasks.find(t=>t.id===taskId&&!t.deleted_at);if(!t||t.done)throw Error('진행 가능한 할 일을 선택해 주세요.');stop(s,now);s.entries.push({id:uid(),deleted_at:null,taskId,kind:'study',start:now,end:null,confirmed:now,device,napMinutes:20});}
+// Timer-only records use the existing task reference so sync and statistics
+// can associate every session with the same subject ID.
+export function startSubject(s:Study,subjectId:string,device:string,now:number){
+ const subject=alive(s.subjects).find(item=>item.id===subjectId&&!item.archived);
+ if(!subject)throw Error('사용할 과목을 선택해 주세요.');
+ let task=alive(s.tasks).find(item=>item.subjectTimer&&item.subjectId===subjectId&&!item.done);
+ if(!task){
+  task={id:uid(),deleted_at:null,day:studyDay(new Date(now)),subjectId,title:subject.name,done:false,subjectTimer:true};
+  s.tasks.push(task);
+ }
+ start(s,task.id,device,now);
+}
 export function cutEntry(s:Study,id:string,from:number,to:number){const e=s.entries.find(e=>e.id===id&&!e.deleted_at);if(!e||e.end===null)throw Error('먼저 타이머를 정지해 주세요.');if(from===Math.floor(e.start/1000)*1000)from=e.start;if(to===Math.floor(e.end/1000)*1000)to=e.end;if(!Number.isFinite(from)||!Number.isFinite(to)||from<e.start||to>e.end||from>=to)throw Error('기록 안에서 뺄 시간 구간을 지정해 주세요.');const end=e.end;if(from===e.start&&to===end)e.deleted_at=new Date().toISOString();else if(from===e.start)e.start=to;else{e.end=from;if(to<end)s.entries.push({...e,id:uid(),start:to,end});}}
 export function scheduleNow(s:Study,now:number){const kst=new Date(now+9*3600000);const weekday=kst.getUTCDay();const hm=kst.toISOString().slice(11,16);const list=alive(s.lessons).filter(l=>l.weekday===weekday).sort((a,b)=>a.start.localeCompare(b.start));return {list,current:list.find(l=>l.start<=hm&&hm<l.end),next:list.find(l=>l.start>hm)};}
 export type Conflict={collection:keyof Omit<Study,'schema'>;id:string;local:Row;remote:Row};
