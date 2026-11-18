@@ -1,16 +1,21 @@
-import {test} from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
-import {subjectPalette} from '../lib/subject-colors';
+import {emptyStudy,normalizeStudy} from '../lib/study';
+import {daySubjects} from '../lib/month-statistics';
+import {donutBackground,subjectPalette} from '../lib/subject-colors';
 
-test('각 과목마다 같은 색상을 안정적으로 사용한다',()=>{
- for(const name of ['국어','수학','영어','화학 반응의 세계','미적분Ⅱ']){
-  assert.deepEqual(subjectPalette(name),subjectPalette(name));
- }
- assert.notEqual(subjectPalette('국어').solid,subjectPalette('수학').solid);
- assert.notEqual(subjectPalette('영어').solid,subjectPalette('수학').solid);
- assert.notEqual(subjectPalette('영어').solid,subjectPalette('국어').solid);
-});
-test('태그 색과 시간표 색을 둘 다 제공한다',()=>{
- const col=subjectPalette('물질과 에너지');
- for(const key of ['solid','soft','ink'] as const)assert.match(col[key],/^#[0-9A-Fa-f]{6}$/);
-});
+for (const count of [5,15,30,40,45]) {
+ test(`stable badge and chart colors with ${count} subjects`,()=>{
+  const day='2026-11-18';
+  const data=normalizeStudy({...emptyStudy(),subjects:Array.from({length:count},(_,i)=>({
+   id:`subject-${i}`,name:`과목 ${i}`,archived:false,deleted_at:null,
+  }))});
+  const rows=data.subjects.map(s=>({study_day:day,subject_id:s.id,duration_ms:60000}));
+  const points=daySubjects(data,day,0,rows);
+  assert.equal(new Set(points.map(s=>s.color)).size,Math.min(40,count));
+  for(const point of points) assert.equal(point.color,subjectPalette(point.id,data.subjects).solid);
+  const reduced=daySubjects({...data,subjects:[...data.subjects].reverse()},day,0,rows.slice(1));
+  for(const point of reduced) assert.equal(point.color,points.find(s=>s.id===point.id)?.color);
+  assert.match(donutBackground(points)!,/white .*360deg\)$/);
+ });
+}

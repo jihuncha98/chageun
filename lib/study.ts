@@ -1,8 +1,9 @@
+import {assignSubjectColors} from './subject-colors';
 import {studyDay} from './study-day';
 import {validCalendarDate} from './exam-planning';
 export const DAY = 86400000;
 export type Row = {id:string; deleted_at:string|null};
-export type Subject = Row & {name:string; archived:boolean};
+export type Subject = Row & {name:string; archived:boolean; colorIndex?:number};
 export type Task = Row & {day:string; subjectId:string; title:string; done:boolean};
 export type Entry = Row & {taskId:string|null; kind:'study'|'nap'; start:number; end:number|null; confirmed:number; device:string; napMinutes:number};
 export type Lesson = Row & {weekday:number; start:string; end:string; label:string; room:string};
@@ -17,7 +18,7 @@ export const emptyStudy = ():Study=>({schema:1,subjects:[],tasks:[],entries:[],l
 export function normalizeStudy(raw:Study):Study {
  if(raw?.schema!==1)throw Error('지원하지 않는 데이터 형식이에요.');
  for(const field of ['exams','assessments','noticeReceipts'] as const)if(raw[field]!==undefined&&!Array.isArray(raw[field]))throw Error('추가 일정 데이터 형식을 확인해 주세요.');
- return {...raw,exams:raw.exams??[],assessments:raw.assessments??[],noticeReceipts:raw.noticeReceipts??[]};
+ return {...raw,subjects:assignSubjectColors(raw.subjects),exams:raw.exams??[],assessments:raw.assessments??[],noticeReceipts:raw.noticeReceipts??[]};
 }
 export const alive = <T extends Row>(rows:T[])=>rows.filter(r=>!r.deleted_at);
 export const uid = ()=>{if(crypto.randomUUID)return crypto.randomUUID();const b=crypto.getRandomValues(new Uint8Array(16));b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;const h=Array.from(b,x=>x.toString(16).padStart(2,'0')).join('');return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;};
@@ -86,6 +87,6 @@ export type Conflict={collection:keyof Omit<Study,'schema'>;id:string;local:Row;
 /** Three-way merge preserves independent changes. Conflicting rows are never silently overwritten. */
 export function mergeStudy(base:Study,local:Study,remote:Study,choices:Record<string,'local'|'remote'>={}){
  const result=structuredClone(normalizeStudy(remote));const conflicts:Conflict[]=[];
- for(const key of ['subjects','tasks','entries','lessons','notes','exams','assessments','noticeReceipts'] as const){const out:Row[]=[];const bm=new Map<string,Row>(normalizeStudy(base)[key].map(x=>[x.id,x]));const lm=new Map<string,Row>(normalizeStudy(local)[key].map(x=>[x.id,x]));const rm=new Map<string,Row>(normalizeStudy(remote)[key].map(x=>[x.id,x]));for(const id of new Set([...lm.keys(),...rm.keys()])){const b=bm.get(id),l=lm.get(id),r=rm.get(id);if(!l){if(r)out.push(r);continue;}if(!r){out.push(l);continue;}const eq=(a:unknown,b:unknown)=>JSON.stringify(a,Object.keys((a??{}) as object).sort())===JSON.stringify(b,Object.keys((b??{}) as object).sort());if(eq(l,b)||eq(l,r))out.push(r);else if(eq(r,b))out.push(l);else{const choice=choices[`${key}:${id}`];if(!choice)conflicts.push({collection:key,id,local:l,remote:r});out.push(choice==='local'?l:r);}}Object.assign(result,{[key]:out});}
- return {result,conflicts};
+ for(const key of ['subjects','tasks','entries','lessons','notes','exams','assessments','noticeReceipts'] as const){const out:Row[]=[];const bm=new Map<string,Row>(normalizeStudy(base)[key].map(x=>[x.id,x]));const lm=new Map<string,Row>(normalizeStudy(local)[key].map(x=>[x.id,x]));const rm=new Map<string,Row>(normalizeStudy(remote)[key].map(x=>[x.id,x]));for(const id of new Set(key==='subjects'?[...rm.keys(),...lm.keys()]:[...lm.keys(),...rm.keys()])){const b=bm.get(id),l=lm.get(id),r=rm.get(id);if(!l){if(r)out.push(r);continue;}if(!r){out.push(l);continue;}const eq=(a:unknown,b:unknown)=>JSON.stringify(a,Object.keys((a??{}) as object).sort())===JSON.stringify(b,Object.keys((b??{}) as object).sort());if(eq(l,b)||eq(l,r))out.push(r);else if(eq(r,b))out.push(l);else{const choice=choices[`${key}:${id}`];if(!choice)conflicts.push({collection:key,id,local:l,remote:r});out.push(choice==='local'?l:r);}}Object.assign(result,{[key]:out});}
+ return {result:normalizeStudy(result),conflicts};
 }
