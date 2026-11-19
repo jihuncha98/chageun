@@ -8,7 +8,7 @@ import {duration} from '../lib/study';
 import {personName} from '../lib/visible-names';
 
 type UserRow={id:string;email:string|null;nickname:string;displayName?:string|null;friendCode:string|null;createdAt:string;isAdmin:boolean};
-type StudyRecord={id:string;start:number;end:number|null;title:string};
+type StudyRecord={id:string;start:number;end:number|null;title:string;deleted?:boolean};
 type StudyRecords={revision:string|null;records:StudyRecord[]};
 type NameEdit={id:string;kind:'display'|'nickname';value:string;reason:string};
 type Member={userId:string;nickname:string;joinedAt:string|null;status:'accepted'|'pending';isOwner:boolean};
@@ -17,6 +17,7 @@ type Archived={id:string;name:string;deletedAt:string;expiresAt:string;memberCou
 type Audit={action:string;reason:string;at:string;targetUserId:string|null;targetGroupId:string|null;detail:Record<string,unknown>};
 type Overview={users:UserRow[];groups:GroupRow[];archivedGroups:Archived[];audit:Audit[]};
 const EMPTY:Overview={users:[],groups:[],archivedGroups:[],audit:[]};
+const kstInput=(ms:number)=>new Date(ms+9*3600000).toISOString().slice(0,23);
 const koreanTime=(value:string)=>new Date(value).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
 const readable=(err:unknown)=>err && typeof err==='object' && 'message' in err && typeof err.message==='string'?err.message:'서버 요청에 실패했어요.';
 
@@ -125,7 +126,8 @@ export default function AdminPanel(){
         {!study.result.records.length&&<p>수정 가능한 공부 기록이 없어요.</p>}
         {study.result.records.map(record=>{
          const maxMinutes=record.end===null?0:Math.ceil((record.end-record.start)/60000)-1;
-         return <form key={record.id} onSubmit={async e=>{
+         return <div className="admin-item" key={record.id}>
+        {!record.deleted&&<form onSubmit={async e=>{
          e.preventDefault();
          const form=new FormData(e.currentTarget);
          const hours=Number(form.get('hours'));
@@ -152,7 +154,27 @@ export default function AdminPanel(){
           <label>분<input name="minutes" type="number" min={0} max={Math.min(59,maxMinutes)} step={1} placeholder="0"/></label>
          </fieldset>:<p>공부 기록이 1분을 초과해야 차감할 수 있어요.</p>)}
          <button className="small" disabled={busy||(record.end!==null&&maxMinutes<1)}>{record.end===null?'타이머 정지':'공부 시간 차감'}</button>
-        </form>})}
+        </form>}
+        {record.end!==null&&<form onSubmit={async e=>{
+         e.preventDefault();
+         const form=new FormData(e.currentTarget);
+         const button=(e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement|null;
+         const action=button?.value||'edit';
+         const time=(key:string)=>Date.parse(String(form.get(key))+'+09:00');
+         const start=action==='edit'?time('start'):null;
+         const end=action==='edit'?time('end'):null;
+         if(action==='edit'&&(!Number.isFinite(start)||!Number.isFinite(end))){setFeedbackUser(user.id);setError('시작·종료 시각을 확인해 주세요.');return;}
+         if(!window.confirm(action==='delete'?'이 기록을 휴지통으로 보낼까요?':action==='restore'?'이 기록을 복구할까요?':'공부 기록의 시각을 변경할까요?'))return;
+         if(await act('chageun_admin_edit_study',{p_user:user.id,p_entry:record.id,p_revision:study.result.revision,p_action:action,p_start:start,p_end:end},'공부 기록을 변경했어요.',reason,user.id))setStudy(null);
+        }}>
+         {record.deleted?<><p>{record.title} · {koreanTime(new Date(record.start).toISOString())} · 휴지통</p><button className="small" value="restore" disabled={busy}>복구</button></>:<>
+          <label>시작 시각 (한국)<input type="datetime-local" name="start" step="0.001" defaultValue={kstInput(record.start)} required/></label>
+          <label>종료 시각 (한국)<input type="datetime-local" name="end" step="0.001" defaultValue={kstInput(record.end)} required/></label>
+          <button className="small" value="edit" disabled={busy}>시각 저장</button>
+          <button className="small" value="delete" formNoValidate disabled={busy}>휴지통으로 보내기</button>
+         </>}
+        </form>}
+        </div>})}
        </section>}
        <button className="small" disabled={busy||!user.email} onClick={()=>{
         setFeedbackUser(user.id);setError('');setNotice('');
@@ -187,6 +209,14 @@ export default function AdminPanel(){
     {section==='groups'&&<div className="admin-list">{data.groups.map(group=><div className="admin-item" key={group.id}>
      <div className="admin-item-details"><strong>{group.name}</strong><p>구성원 {group.members.filter(x=>x.status==='accepted').length}명 · 생성 {koreanTime(group.createdAt)}</p></div>
 
+   <form onSubmit={e=>{
+    e.preventDefault();
+    const name=String(new FormData(e.currentTarget).get('name')??'').trim();
+    if(name!==group.name)void act('chageun_admin_rename_group',{p_group:group.id,p_name:name},'그룹 이름을 변경했어요.');
+   }}>
+    <label>그룹 이름<input key={group.name} name="name" defaultValue={group.name} minLength={2} maxLength={40} required/></label>
+    <button className="small" disabled={busy}>이름 저장</button>
+   </form>
    <div className="admin-members">{group.members.map(m=><div className="admin-member" key={m.userId}>
       <span>{adminNames.get(m.userId)??m.nickname} {m.isOwner?'· 그룹 관리자':m.status==='pending'?'· 초대 대기':''}</span>
       <div className="admin-actions">
