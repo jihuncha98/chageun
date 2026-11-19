@@ -1,4 +1,5 @@
 'use client';
+import FocusThemePicker from './focus-theme-picker';
 import {TitleEmblem} from './title-badge';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from '../lib/supabase';
@@ -7,7 +8,6 @@ type Kind='title'|'skin'|'theme';
 type Item={id:string;kind:Kind;label:string;level:number|null;price:number|null;active:boolean;owned:boolean;equipped:boolean};
 type Journal={seq:number;action:string;delta:number;reason:string;item:string|null;created_at:string};
 type Inventory={balance:number;items:Item[];history:Journal[];rule:{seconds:number;cap:number;starts:string}|null};
-const labels={title:'칭호',skin:'타이머 스킨',theme:'화면 테마'};
 const actions:Record<string,string>={credit:'관리자 지급',debit:'관리자 회수',buy:'구매',equip:'장착',grant_item:'상품 지급',revoke_item:'상품 회수',rule:'적립 설정',catalog:'상품 설정',study:'공부 시간 정산'};
 const defaults=['classic','standard','title1'];
 async function read(user:string|null,before:number|null=null):Promise<Inventory>{
@@ -42,8 +42,20 @@ export function ShopAdmin({users}:{users:Person[]}){
  return <section><label>회원 검색<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="표시 이름 또는 이메일"/></label><label>대상 회원<select value={id} onChange={e=>setId(e.target.value)}><option value="">선택하세요</option>{matches.map(u=><option value={u.id} key={u.id}>{u.displayName} · {u.email}</option>)}</select></label>{id&&<Shop key={id} user={id}/>}</section>;
 }
 export default function Shop({user=null}:{user?:string|null}){
+ const [tab,setTab]=useState<'title'|'timer'>('title');
+ if(user)return <TitleShop user={user}/>;
+ return <div className="shop-view">
+  <div className="shop-tabs" aria-label="상점 분류">
+   <button className="small" aria-pressed={tab==='title'} onClick={()=>setTab('title')}>칭호</button>
+   <button className="small" aria-pressed={tab==='timer'} onClick={()=>setTab('timer')}>타이머 테마</button>
+  </div>
+  {tab==='title'?<TitleShop/>:<FocusThemePicker/>}
+ </div>;
+}
+
+function TitleShop({user=null}:{user?:string|null}){
  const [state,setState]=useState<Inventory|null>(null),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
- const [kind,setKind]=useState<Kind>('title'),[preview,setPreview]=useState<Item|null>(null);
+ const [preview,setPreview]=useState<Item|null>(null);
  const [reason,setReason]=useState(''),[amount,setAmount]=useState(''),[seconds,setSeconds]=useState('');
  const [history,setHistory]=useState<Journal[]>([]),[more,setMore]=useState(false);
  const lock=useRef(false),retry=useRef({key:'',id:''});
@@ -64,8 +76,7 @@ export default function Shop({user=null}:{user?:string|null}){
  <section className="card shop-wallet"><h2>보유 크레딧</h2><strong className="shop-balance">{state.balance.toLocaleString()} C</strong><p>{state.rule?new Date(state.rule.starts).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})+'부터 '+state.rule.seconds+'초당 1 C · 하루 적립 한도 없음':'자동 적립 시작 전'}</p>
  {user&&<><label>관리 사유<input value={reason} maxLength={150} onChange={e=>setReason(e.target.value)}/></label><label>크레딧 수량<input type="number" min="1" value={amount} onChange={e=>setAmount(e.target.value)}/></label>{['credit','debit'].map(a=><button key={a} className="small" disabled={busy||Number(amount)<1} onClick={()=>void submit(a,null,Number(amount))}>{actions[a]}</button>)}
  <details><summary>자동 적립 설정</summary><label>1 C당 공부 시간(초)<input type="number" min="1" value={seconds} onChange={e=>setSeconds(e.target.value)}/></label><p>처음에는 저장 시점부터, 이후 변경은 다음 학습일 오전 6시부터 적용돼요.</p><button className="small" disabled={busy||Number(seconds)<1} onClick={()=>void submit('rule',null,Number(seconds),{cap:2147483647})}>적립 기준 저장</button></details></>}</section>
- <div className="shop-tabs">{(['title'] as Kind[]).map(k=><button key={k} className="small" aria-pressed={kind===k} onClick={()=>{setKind(k);setPreview(null);}}>{labels[k]}</button>)}</div>
- <div className="shop-grid">{state.items.filter(i=>i.kind===kind).map(i=>{
+ <div className="shop-grid">{state.items.filter(i=>i.kind==='title').map(i=>{
  const locked=i.level&&i.level>1&&!state.items.some(p=>p.kind==='title'&&p.level===i.level!-1&&p.owned);
  return <article key={i.id} className="card shop-product">{i.kind==='title'?<TitleEmblem level={i.level}/>:<div className="product-preview" data-product={i.id}>{i.kind==='skin'?<><span>집중 시간</span><strong>00:32:18</strong><span>수학 · 공부 중</span></>:<><span>오늘의 공부</span><strong>차근차근</strong><span>나의 근면성실</span></>}</div>}<h3>{i.level?'LV'+i.level+' · ':''}{i.label}</h3><p>{i.equipped?'장착 중':i.owned?'보유함':locked?'이전 칭호 필요':i.price===null?'가격 미정':i.price+' C'}</p>
  <button className="small" onClick={()=>setPreview(i)}>미리보기</button>{!user?<button className="small" disabled={busy||i.equipped||(!i.owned&&(!!locked||!i.active||i.price===null||i.price>state.balance))} onClick={()=>void submit(i.owned?'equip':'buy',i)}>{i.owned?'장착':'구매'}</button>:!defaults.includes(i.id)&&<>

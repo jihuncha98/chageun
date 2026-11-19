@@ -515,3 +515,40 @@ html[data-skin=midnight] .task-compact .task-title{color:white}html[data-skin=pa
 html[data-skin=midnight] .task-time-action,html[data-skin=pastel] .task-time-action{font-family:ui-monospace,monospace;background:#fff;color:#273451;border:1px solid #8992ad}
 html[data-shop-theme=lagoon] .app{--accent:#136f70;--accent-mid:#238282;--accent-strong:#105c60;--accent-soft:#dff4ed;--accent-border:#93cabe}
 html[data-shop-theme=lagoon] .app:not(.dark),[data-preview=lagoon]{background:#edf6f3;color:#16343c}html[data-shop-theme=lagoon] .app:not(.dark) aside{background:#e1f1ed}html[data-shop-theme=lagoon] .app .card{border-color:#80b7ab}
+
+.focus-theme-thumbnail {
+  aspect-ratio:4 / 3;
+  display:grid;
+  place-items:center;
+  background-position:center;
+  background-size:cover;
+  border-radius:10px;
+  color:#fff8e8;
+  font-size:clamp(18px,3vw,32px);
+  font-variant-numeric:tabular-nums;
+  text-shadow:0 2px 8px #000;
+}
+.chageun-focus-mode.focus-mode-pixel {
+  background-size:cover;
+  background-position:center;
+}
+.chageun-focus-mode.focus-mode-pixel .focus-mode-time {color:#fff8e8}
+.focus-mode-pixel .focus-mode-time svg {
+  display:block;
+  width:min(64vw,850px);
+  height:auto;
+  max-height:25vh;
+  margin:auto;
+}
+.focus-mode-pixel .focus-mode-stop {
+  border-radius:4px;
+  border-width:2px;
+}
+.focus-mode-pixel .focus-mode-overline,
+.focus-mode-pixel .focus-mode-activity,
+.focus-mode-pixel .focus-mode-small,
+.focus-mode-pixel .focus-mode-status,
+.focus-mode-pixel .focus-mode-hint {color:#fff8e8;text-shadow:0 1px 6px #000}
+@media(max-width:640px){
+ .focus-mode-pixel .focus-mode-time svg {width:84vw}
+}
