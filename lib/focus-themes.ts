@@ -7,6 +7,12 @@ export const focusThemes = [
   { id: 'space', label: '우주 관측실', color: '#081529', accent: '#7fc6ed' },
   { id: 'laundry', label: '새벽 세탁소', color: '#102b33', accent: '#e6a995' },
   { id: 'jazz', label: '심야 재즈바', color: '#240b14', accent: '#da7986' },
+  { id: 'chalkboard', label: '수학 칠판', color: '#0e281e', accent: '#a0bc92' },
+  { id: 'science', label: '과학 실험실', color: '#061b22', accent: '#83d2cb' },
+  { id: 'dawn-classroom', label: '새벽 자습실', color: '#111d30', accent: '#e1ad79' },
+  { id: 'drafting', label: '공학 제도실', color: '#242930', accent: '#9bb6cf' },
+  { id: 'study-booth', label: '독서실 1인석', color: '#1d1e21', accent: '#c7a58b' },
+  { id: 'graph-notebook', label: '모눈 문제풀이 노트', color: '#25291e', accent: '#b7bd8d' },
 ] as const;
 
 export type FocusTheme = (typeof focusThemes)[number];
