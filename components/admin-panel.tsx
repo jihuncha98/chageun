@@ -123,10 +123,21 @@ export default function AdminPanel(){
        {study?.user===user.id&&<section className="admin-item">
         <button className="small" onClick={()=>setStudy(null)}>닫기</button>
         {!study.result.records.length&&<p>수정 가능한 공부 기록이 없어요.</p>}
-        {study.result.records.map(record=><form key={record.id} onSubmit={async e=>{
+        {study.result.records.map(record=>{
+         const maxMinutes=record.end===null?0:Math.ceil((record.end-record.start)/60000)-1;
+         return <form key={record.id} onSubmit={async e=>{
          e.preventDefault();
-         const seconds=record.end===null?null:Number(new FormData(e.currentTarget).get('seconds'));
-         const message=seconds===null?'이 타이머를 지금 정지할까요?':`이 기록에서 ${seconds}초를 차감할까요?`;
+         const form=new FormData(e.currentTarget);
+         const hours=Number(form.get('hours'));
+         const minutes=Number(form.get('minutes'));
+         const totalMinutes=hours*60+minutes;
+         const seconds=record.end===null?null:totalMinutes*60;
+         if(seconds!==null&&(!Number.isInteger(hours)||hours<0||!Number.isInteger(minutes)||minutes<0||minutes>59||totalMinutes<1||totalMinutes>maxMinutes)){
+          setFeedbackUser(user.id);
+          setError(`차감 시간은 1분 이상, 최대 ${Math.floor(maxMinutes/60)}시간 ${maxMinutes%60}분까지 입력해 주세요.`);
+          return;
+         }
+         const message=seconds===null?'이 타이머를 지금 정지할까요?':`이 기록에서 ${hours}시간 ${minutes}분을 차감할까요?`;
          if(reason.trim().length<2){setFeedbackUser(user.id);setError('조치 사유를 2~150자로 입력해 주세요.');return;}
          if(!window.confirm(message))return;
          const saved=await act('chageun_admin_adjust_study',{p_user:user.id,p_entry:record.id,p_revision:study.result.revision,p_seconds:seconds},
@@ -135,9 +146,13 @@ export default function AdminPanel(){
         }}>
          <strong>{record.title}</strong>
          <p>{koreanTime(new Date(record.start).toISOString())} · {record.end===null?'실행 중':duration(record.end-record.start)}</p>
-         {record.end!==null&&record.end-record.start>1000&&<label>차감 시간 (초)<input name="seconds" type="number" min={1} max={Math.ceil((record.end-record.start)/1000)-1} step={1} required/></label>}
-         <button className="small" disabled={busy||(record.end!==null&&record.end-record.start<=1000)}>{record.end===null?'타이머 정지':'공부 시간 차감'}</button>
-        </form>)}
+         {record.end!==null&&(maxMinutes>0?<fieldset>
+          <legend>차감 시간</legend>
+          <label>시간<input name="hours" type="number" min={0} max={Math.floor(maxMinutes/60)} step={1} placeholder="0"/></label>
+          <label>분<input name="minutes" type="number" min={0} max={Math.min(59,maxMinutes)} step={1} placeholder="0"/></label>
+         </fieldset>:<p>공부 기록이 1분을 초과해야 차감할 수 있어요.</p>)}
+         <button className="small" disabled={busy||(record.end!==null&&maxMinutes<1)}>{record.end===null?'타이머 정지':'공부 시간 차감'}</button>
+        </form>})}
        </section>}
        <button className="small" disabled={busy||!user.email} onClick={()=>{
         setFeedbackUser(user.id);setError('');setNotice('');
