@@ -4,9 +4,12 @@ import {ShopAdmin} from './shop';
 import {BroadcastAdminPanel} from './broadcast-notices';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
+import {duration} from '../lib/study';
 import {personName} from '../lib/visible-names';
 
 type UserRow={id:string;email:string|null;nickname:string;displayName?:string|null;friendCode:string|null;createdAt:string;isAdmin:boolean};
+type StudyRecord={id:string;start:number;end:number|null;title:string};
+type StudyRecords={revision:string|null;records:StudyRecord[]};
 type NameEdit={id:string;kind:'display'|'nickname';value:string;reason:string};
 type Member={userId:string;nickname:string;joinedAt:string|null;status:'accepted'|'pending';isOwner:boolean};
 type GroupRow={id:string;name:string;ownerId:string;createdAt:string;members:Member[]};
@@ -27,6 +30,17 @@ export default function AdminPanel(){
  const [reason,setReason]=useState('');
  const [section,setSection]=useState<'users'|'groups'|'archived'|'history'|'notifications'|'shop'>('users');
 
+ const [study,setStudy]=useState<{user:string;result:StudyRecords}|null>(null);
+ async function loadStudy(user:string){
+  if(!supabase||busy)return;
+  setFeedbackUser(user);setBusy(true);setError('');setNotice('');
+  try{
+   const {data,error}=await supabase.rpc('chageun_admin_study_records',{p_user:user});
+   if(error)throw error;
+   setStudy({user,result:data as StudyRecords});
+  }catch(error){setError(readable(error));}
+  finally{setBusy(false);}
+ }
  const [nameEdit,setNameEdit]=useState<NameEdit|null>(null);
  const refresh=useCallback(async()=>{
   if(!supabase)return;
@@ -105,6 +119,26 @@ export default function AdminPanel(){
        <button className="small" disabled={busy||user.displayName===undefined} onClick={()=>beginNameEdit(user,'display')}>표시 이름 수정</button>
        <button className="small" disabled={busy} onClick={()=>beginNameEdit(user,'nickname')}>친구 별명 수정</button>
 
+       <button className="small" disabled={busy} onClick={()=>void loadStudy(user.id)}>공부 기록 관리</button>
+       {study?.user===user.id&&<section className="admin-item">
+        <button className="small" onClick={()=>setStudy(null)}>닫기</button>
+        {!study.result.records.length&&<p>수정 가능한 공부 기록이 없어요.</p>}
+        {study.result.records.map(record=><form key={record.id} onSubmit={async e=>{
+         e.preventDefault();
+         const seconds=record.end===null?null:Number(new FormData(e.currentTarget).get('seconds'));
+         const message=seconds===null?'이 타이머를 지금 정지할까요?':`이 기록에서 ${seconds}초를 차감할까요?`;
+         if(reason.trim().length<2){setFeedbackUser(user.id);setError('조치 사유를 2~150자로 입력해 주세요.');return;}
+         if(!window.confirm(message))return;
+         const saved=await act('chageun_admin_adjust_study',{p_user:user.id,p_entry:record.id,p_revision:study.result.revision,p_seconds:seconds},
+          seconds===null?'타이머를 정지했어요.':'공부 시간을 차감했어요.',reason,user.id);
+         if(saved)setStudy(null);
+        }}>
+         <strong>{record.title}</strong>
+         <p>{koreanTime(new Date(record.start).toISOString())} · {record.end===null?'실행 중':duration(record.end-record.start)}</p>
+         {record.end!==null&&record.end-record.start>1000&&<label>차감 시간 (초)<input name="seconds" type="number" min={1} max={Math.ceil((record.end-record.start)/1000)-1} step={1} required/></label>}
+         <button className="small" disabled={busy||(record.end!==null&&record.end-record.start<=1000)}>{record.end===null?'타이머 정지':'공부 시간 차감'}</button>
+        </form>)}
+       </section>}
        <button className="small" disabled={busy||!user.email} onClick={()=>{
         setFeedbackUser(user.id);setError('');setNotice('');
         if(reason.trim().length<2||reason.trim().length>150){setError('먼저 관리자 조치 사유를 2~150자로 입력해 주세요.');return;}
