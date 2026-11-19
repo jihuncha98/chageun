@@ -9,7 +9,7 @@ import {socialNames} from '../lib/visible-names';
 import {friendLastSeen,friendTime,validFriendCode} from '../lib/friends';
 import {clampGroupPage,GROUP_BOARD_PAGE_SIZE,groupPageCount,groupViewDescription,validGroupName,type GroupBoardRow,type GroupOverview} from '../lib/groups';
 
-const message=(error:unknown)=>error instanceof Error?error.message:'연결을 확인해 주세요.';
+const message=(error:unknown)=>error && typeof error==='object' && 'message' in error && typeof error.message==='string'?error.message:'연결을 확인해 주세요.';
 const initialOverview:GroupOverview={groups:[],invitations:[]};
 export default function GroupsView({now}:{now:number}){
  const [overview,setOverview]=useState<GroupOverview>(initialOverview);
@@ -172,6 +172,19 @@ export default function GroupsView({now}:{now:number}){
     </>}
    </section>
    <section className="card below"><h2>그룹 관리</h2><p>{group.isOwner?'관리자는 그룹을 삭제하거나 다른 그룹원에게 관리 권한을 넘길 수 있어요.':'그룹에서 나가면 이 그룹을 통한 공부 시간 공유가 끝나요.'}</p>
+    {group.isOwner&&<details key={group.id}>
+     <summary>그룹 이름 변경</summary>
+     <form className="group-create-form" onSubmit={async e=>{
+      e.preventDefault();
+      const name=String(new FormData(e.currentTarget).get('name')??'').trim();
+      if(!validGroupName(name)){setError('그룹 이름은 2~40자로 입력해 주세요.');return;}
+      if(name===group.name)return;
+      await act('group_rename',{p_group:group.id,p_name:name},'그룹 이름을 변경했어요.');
+     }}>
+      <label>새 그룹 이름<input key={group.name} name="name" defaultValue={group.name} minLength={2} maxLength={40} required disabled={busy}/></label>
+      <button className="primary compact" disabled={busy}>이름 저장</button>
+     </form>
+    </details>}
     {group.isOwner?<button className="small" disabled={busy} onClick={()=>{if(confirm(`「${group.name}」 그룹을 삭제할까요? 그룹이 즉시 비활성화되고 전체 관리자가 7일 이내 복구할 수 있어요. 개인 공부 기록은 삭제되지 않아요.`))void act('group_delete',{p_group:group.id},'그룹을 삭제했어요. 전체 관리자는 7일 이내 복구할 수 있어요.');}}>그룹 삭제</button>:<button className="small" disabled={busy} onClick={()=>{if(confirm(`「${group.name}」 그룹에서 나갈까요?`))void act('group_leave',{p_group:group.id},'그룹에서 나왔어요.');}}>그룹 나가기</button>}
    </section>
   </>}
