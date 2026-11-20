@@ -528,27 +528,17 @@ html[data-shop-theme=lagoon] .app:not(.dark),[data-preview=lagoon]{background:#e
   font-variant-numeric:tabular-nums;
   text-shadow:0 2px 8px #000;
 }
-.chageun-focus-mode.focus-mode-pixel {
+.chageun-focus-mode.focus-mode-themed {
   background-size:cover;
   background-position:center;
 }
-.chageun-focus-mode.focus-mode-pixel .focus-mode-time {color:#fff8e8}
-.focus-mode-pixel .focus-mode-time svg {
-  display:block;
-  width:min(64vw,850px);
-  height:auto;
-  max-height:25vh;
-  margin:auto;
-}
-.focus-mode-pixel .focus-mode-stop {
+.chageun-focus-mode.focus-mode-themed .focus-mode-time {color:#fff8e8}
+.focus-mode-themed .focus-mode-stop {
   border-radius:4px;
   border-width:2px;
 }
-.focus-mode-pixel .focus-mode-overline,
-.focus-mode-pixel .focus-mode-activity,
-.focus-mode-pixel .focus-mode-small,
-.focus-mode-pixel .focus-mode-status,
-.focus-mode-pixel .focus-mode-hint {color:#fff8e8;text-shadow:0 1px 6px #000}
-@media(max-width:640px){
- .focus-mode-pixel .focus-mode-time svg {width:84vw}
-}
+.focus-mode-themed .focus-mode-overline,
+.focus-mode-themed .focus-mode-activity,
+.focus-mode-themed .focus-mode-small,
+.focus-mode-themed .focus-mode-status,
+.focus-mode-themed .focus-mode-hint {color:#fff8e8;text-shadow:0 1px 6px #000}
