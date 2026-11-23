@@ -1,0 +1,135 @@
+/* Interactive accents follow appearance settings. Subject and status colors belong to their data. */
+.app {
+  --accent-ink: var(--accent-strong);
+  --accent-tint: color-mix(in srgb, var(--accent-soft) 65%, var(--panel));
+}
+.app.dark {
+  --accent-ink: color-mix(in srgb, var(--accent-mid) 58%, white);
+}
+.app.dark[data-accent="sand"] { --accent: #8b7047; --accent-soft: #453a2b; }
+.app.dark[data-accent="slate"] { --accent: #546a80; --accent-soft: #293d50; }
+.app.dark[data-accent="rose"] { --accent: #a25774; --accent-soft: #492d3d; }
+.app.dark[data-accent="forest"] { --accent: #476e56; --accent-soft: #284035; }
+
+.app :is(button, a, input, textarea, select, summary):focus-visible,
+.app .chageun-today .task-compact .task-menu-trigger:focus-visible {
+  outline-color: var(--accent);
+}
+.app :is(input, textarea, select):focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+.app input[type="checkbox"], .app input[type="radio"] { accent-color: var(--accent-strong); }
+.app button.primary, .app button.primary:hover:not(:disabled) {
+  background-color: var(--accent-strong);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.app nav button:hover:not(:disabled),
+.app.dark nav button:hover:not(:disabled),
+.app:not(.dark) nav button[aria-current="page"],
+.app.dark nav button[aria-current],
+.app .bottom-nav-shell .nav-more-active {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.app .chageun-today .task-compact .task-checkbox[aria-pressed="true"],
+.app.dark .chageun-today .task-compact .task-checkbox[aria-pressed="true"] {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+.app .month-grid button b { color: var(--accent-ink); }
+.app .month-grid button[aria-pressed="true"] {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.app .study-donut strong { background: var(--panel); color: var(--text); }
+.app .calendar-day:hover { border-color: var(--accent); }
+.app .calendar-day.is-today .calendar-number {
+  background: var(--accent-strong);
+  color: white;
+}
+.app .chageun-today .exam-today-banner,
+.app.dark .chageun-today .exam-today-banner {
+  background: linear-gradient(115deg, var(--panel) 42%, var(--accent-tint));
+  border-color: var(--accent-border);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.app .chageun-today .exam-today-banner::before,
+.app.dark .chageun-today .exam-today-banner::before,
+.app .chageun-today .exam-countdown,
+.app.dark .chageun-today .exam-countdown,
+.app .admin-tabs button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.app .chageun-today .exam-today-banner .eyebrow,
+.app .chageun-today .today-school strong,
+.app .chageun-today .task-compact .task-time-play {
+  color: var(--accent-ink);
+}
+.app .social-rank .friend-rank-number,
+.app .heading .eyebrow,
+.app .chageun-today .reuse-option > span:first-child {
+  color: var(--accent-ink);
+}
+.app .chageun-today button.reuse-option:hover {
+  background: var(--accent-tint);
+  border-color: var(--accent-border);
+}
+.app .chageun-focus-mode:not(.focus-mode-themed) .focus-mode-stop {
+  background: var(--accent-strong);
+  border-color: var(--accent-border);
+}
+.app .chageun-focus-mode:not(.focus-mode-themed) .focus-mode-stop:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-strong) 85%, white);
+}
+.app .shop-tabs button[aria-pressed="true"] {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: white;
+}
+
+.app .statistics-member-link {
+  position: relative;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.app .statistics-member-link::after {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 44px;
+  min-width: 44px;
+  transform: translateY(-50%);
+}
+.app .statistics-member-link:hover { color: var(--accent-ink); }
+.app .shared-statistics-dialog {
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: min(100%, 680px);
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  padding: clamp(12px, 2vw, 24px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+}
+.app .shared-statistics-dialog::backdrop { background: rgb(18 28 44 / 28%); }
+.shared-statistics-heading { gap: 12px; margin-bottom: 16px; }
+.shared-statistics-heading h2 { color: var(--text); }
+.shared-statistics-heading > div { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.shared-statistics-heading button { min-width: 44px; flex-shrink: 0; }
+.shared-statistics-dialog .month-grid button { min-width: 0; }
+.shared-statistics-dialog .month-grid b { margin-left: 0; }
+.shared-statistics-dialog .subject-analysis p { overflow-wrap: anywhere; }

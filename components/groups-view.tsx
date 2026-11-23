@@ -1,4 +1,5 @@
 'use client';
+import SharedStudyStatistics,{type StatisticsMember} from './shared-study-statistics';
 import {TitleBadge} from './title-badge';
 
 import {useCallback,useEffect,useRef,useState,type FormEvent} from 'react';
@@ -11,7 +12,8 @@ import {clampGroupPage,GROUP_BOARD_PAGE_SIZE,groupPageCount,groupViewDescription
 
 const message=(error:unknown)=>error && typeof error==='object' && 'message' in error && typeof error.message==='string'?error.message:'연결을 확인해 주세요.';
 const initialOverview:GroupOverview={groups:[],invitations:[]};
-export default function GroupsView({now}:{now:number}){
+export default function GroupsView({now,userId}:{now:number;userId:string}){
+ const [statsMember,setStatsMember]=useState<StatisticsMember|null>(null);
  const [overview,setOverview]=useState<GroupOverview>(initialOverview);
  const [board,setBoard]=useState<GroupBoardRow[]>([]);
  const [summary,setSummary]=useState<{total:number;active:number}|null>(null);
@@ -121,9 +123,10 @@ export default function GroupsView({now}:{now:number}){
  async function invite(e:FormEvent<HTMLFormElement>){e.preventDefault();if(!group)return;if(!validFriendCode(inviteCode)){setError('16자리 친구 코드를 정확히 입력해 주세요.');return;}if(await act('group_invite',{p_group:group.id,p_code:inviteCode.trim().toUpperCase()},'초대를 보냈어요. 상대방이 수락하면 그룹원이 돼요.'))setInviteCode('');}
  const pageNumbers=Array.from({length:Math.min(5,pageCount)},(_,i)=>Math.max(1,Math.min(pageCount-4,page-2))+i);
  return <div className="groups-view">
+  {statsMember&&<SharedStudyStatistics key={statsMember.id} member={statsMember} now={now} onClose={()=>setStatsMember(null)}/>}
   <section className="card">
    <div className="section-title"><h2>함께 공부하는 그룹</h2><button className="small" disabled={busy||loading} onClick={()=>void refresh(true)}>새로고침</button></div>
-   <p className="fine">그룹에 가입해도 1:1 친구가 자동 추가되지는 않지만, 그룹 안에서는 별도 친구 신청 없이 서로 연결돼요. 개인 할 일·시간표·과거 기록·이메일은 공유하지 않아요.</p>
+   <p className="fine">그룹에 가입해도 1:1 친구가 자동 추가되지는 않지만, 그룹 안에서는 별도 친구 신청 없이 서로 연결돼요. 공부 통계는 공개를 켠 사람의 날짜별·과목별 합계만 볼 수 있어요. 할 일·시간표·이메일은 비공개예요.</p>
    {loading&&<p role="status">그룹을 불러오는 중…</p>}
    {error&&<p role="alert" className="notice error">{error}</p>}
    {notice&&<p role="status" className="notice">{notice}</p>}
@@ -145,7 +148,7 @@ export default function GroupsView({now}:{now:number}){
     {!shareEnabled&&<p className="notice">{groupViewDescription(false)}</p>}
     <div className="group-rank-list">{board.map(row=><article key={row.member_id} className={`friend-rank-row ${row.is_me?'friend-self':''}`}>
      <div className="friend-rank-number">{row.position===null?'—':`${row.position}위`}</div>
-     <div className="friend-rank-user"><strong>{row.display_name}{row.is_me?' (나)':''} <TitleBadge label={row.title}/></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
+     <div className="friend-rank-user"><strong>{row.is_me?`${row.display_name} (나)`:<button type="button" className="statistics-member-link" aria-label={`${row.display_name}의 공부 통계`} onClick={()=>setStatsMember({id:row.member_id,name:row.display_name})}>{row.display_name}</button>} <TitleBadge label={row.title}/></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
      <div className="friend-rank-time">{friendTime(sharedStudyTime(row.total_ms,row.studying,boardReceivedAt,now,typeof navigator==='undefined'||navigator.onLine))}</div>
     </article>)}{board.length===0&&<p className="empty">표시할 순위가 없어요.</p>}</div>
     {pageCount>1&&<div className="record-pagination" role="navigation" aria-label="그룹 순위 페이지">
@@ -159,7 +162,7 @@ export default function GroupsView({now}:{now:number}){
 
    <section className="card below"><div className="section-title"><h2>그룹원</h2><span>{group.members.length}명</span></div>
     {group.members.slice(0,memberShown).map(member=><div className="record-row" key={member.userId}>
-     <div className="record-details"><strong>{member.nickname}</strong><p>{member.isOwner?'그룹 관리자':'그룹원'}</p></div>
+     <div className="record-details"><strong>{member.userId===userId?member.nickname:<button type="button" className="statistics-member-link" aria-label={`${member.nickname}의 공부 통계`} onClick={()=>setStatsMember({id:member.userId,name:member.nickname})}>{member.nickname}</button>}</strong><p>{member.isOwner?'그룹 관리자':'그룹원'}</p></div>
      {group.isOwner&&!member.isOwner&&<div className="actions">
       <button type="button" className="small" disabled={busy} onClick={()=>{if(confirm(`${member.nickname}님에게 그룹 관리자 권한을 넘길까요?`))void act('group_transfer_owner',{p_group:group.id,p_new_owner:member.userId},'그룹 관리자를 변경했어요.');}}>관리자 이전</button>
       <button type="button" className="small" disabled={busy} onClick={()=>{if(confirm(`${member.nickname}님을 이 그룹에서 내보낼까요?`))void act('group_remove_member',{p_group:group.id,p_member:member.userId},'그룹원을 내보냈어요.');}}>내보내기</button>

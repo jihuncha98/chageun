@@ -1,5 +1,5 @@
 'use client';
-import {donutBackground} from '../lib/subject-colors';
+import {DailySubjectChart,MonthCalendar} from './statistics-panels';
 import {useEffect,useState} from 'react';
 import {alive,duration,localInput,sliceDay,type Entry,type Study} from '../lib/study';
 import {pageCount,pageItems,pageNumbers,RECORDS_PER_PAGE,safePage} from '../lib/pagination';
@@ -70,10 +70,8 @@ export default function StudyStatistics({userId,data,base,now,review,pending,bus
  const subjectName=(e:Entry)=>{const task=data.tasks.find(t=>t.id===e.taskId);return data.subjects.find(subject=>subject.id===task?.subjectId)?.name??'과목';};
  return <div className="statistics-view">
   {review?<p className="notice error">겹치는 기록을 아래 목록에서 확인해 주세요. 해결하면 통계가 표시돼요.</p>:<div className="month-layout">
-   <section className="card month-calendar"><header><button className="small" aria-label="이전 달" onClick={()=>navigate(-1)}>‹</button><h2>{Number(month.slice(0,4))}년 {Number(month.slice(5))}월</h2><button className="small" aria-label="다음 달" onClick={()=>navigate(1)}>›</button></header>
-    <div className="month-grid">{Array.from('일월화수목금토').map(w=><strong key={w}>{w}</strong>)}{Array.from({length:new Date(days[0]+'T00:00:00Z').getUTCDay()},(_,i)=><span key={i}/>)}{points.map(p=><button key={p.day} aria-current={p.day===currentStudyDay?'date':undefined} aria-pressed={point.day===p.day} onClick={()=>setSelected(p.day)}><b>{Number(p.day.slice(8))}</b><small>{p.ms?duration(p.ms).split(':').slice(0,2).join(':'):'·'}</small></button>)}</div>
-   </section><div><section className="card"><h2>월간 요약</h2><div className="month-summary"><div>총 순공<strong>{duration(total)}</strong></div><div>공부한 날<strong>{points.filter(p=>p.ms>0).length}일</strong></div></div><details><summary>학습 요약 더 보기</summary><p>할 일 완료 {monthTasks.filter(t=>t.done).length} / {monthTasks.length}</p>{today&&<p>오늘 순공 {duration(today.ms)} · 어제 대비 {yesterday?(today.ms>=yesterday?'+':'−')+duration(Math.abs(today.ms-yesterday)):'비교할 기록 없음'}</p>}</details></section>
-   <section className="card below"><h2>{Number(point.day.slice(5,7))}월 {Number(point.day.slice(8))}일 공부 분석</h2><div className="subject-analysis"><div className="study-donut" style={{background:donutBackground(point.subjects)}}><strong>{duration(point.ms)}</strong></div><div>{point.subjects.map(s=><p key={s.id}><i style={{background:s.color}}/>{s.name} · {duration(s.ms)} · {Math.round(100*s.ms/point.ms)}%</p>)}{!point.ms&&<p>공부 기록이 없어요.</p>}</div></div></section></div>
+   <MonthCalendar month={month} points={points} selected={point.day} currentStudyDay={currentStudyDay} onNavigate={navigate} onSelect={setSelected}/><div><section className="card"><h2>월간 요약</h2><div className="month-summary"><div>총 순공<strong>{duration(total)}</strong></div><div>공부한 날<strong>{points.filter(p=>p.ms>0).length}일</strong></div></div><details><summary>학습 요약 더 보기</summary><p>할 일 완료 {monthTasks.filter(t=>t.done).length} / {monthTasks.length}</p>{today&&<p>오늘 순공 {duration(today.ms)} · 어제 대비 {yesterday?(today.ms>=yesterday?'+':'−')+duration(Math.abs(today.ms-yesterday)):'비교할 기록 없음'}</p>}</details></section>
+   <DailySubjectChart point={point}/></div>
    {(pending||!rows)&&<p role="status">{pending?'기기 기록 기준 · 동기화 대기 중':rollupError||'보관된 월간 기록을 확인하고 있어요.'}</p>}</div>}
   <section className="card below" aria-label="측정 기록 목록">
    <div className="section-title"><div><h2>측정 기록 목록</h2><p className="fine">오늘·어제의 개별 측정 기록만 보관해요(한국 시간 자정 기준). 한 페이지에 {RECORDS_PER_PAGE}개씩 표시해요.</p></div><span className="fine">전체 {records.length}개</span></div>

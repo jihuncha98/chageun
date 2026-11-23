@@ -1,4 +1,5 @@
 'use client';
+import SharedStudyStatistics,{type StatisticsMember} from './shared-study-statistics';
 import {TitleBadge} from './title-badge';
 import {useCallback,useEffect,useMemo,useRef,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
@@ -10,6 +11,7 @@ import {friendLastSeen,friendTime,rankFriends,validFriendCode,type FriendBoardRo
 const message=(error:unknown)=>error instanceof Error?error.message:'연결을 확인해 주세요.';
 /** Realtime totals come from the existing private workspace through narrow, authenticated RPCs. */
 export default function FriendsView({now}:{now:number}){
+ const [statsMember,setStatsMember]=useState<StatisticsMember|null>(null);
  const [overview,setOverview]=useState<FriendOverview|null>(null);
  const [board,setBoard]=useState<FriendBoardRow[]>([]);
  const [boardReceivedAt,setBoardReceivedAt]=useState(0);
@@ -108,6 +110,7 @@ export default function FriendsView({now}:{now:number}){
  const self=board.find(r=>r.is_me);
  const profile:FriendProfile|undefined=overview?.profile;
  return <div className="friends-view">
+  {statsMember&&<SharedStudyStatistics key={statsMember.id} member={statsMember} now={now} onClose={()=>setStatsMember(null)}/>}
   <section className="card">
    <div className="section-title"><h2>친구와 공부하기</h2><button className="small" onClick={()=>void refresh()} disabled={busy||loading}>새로고침</button></div>
    <p>직접 친구 요청을 수락했거나 같은 그룹의 초대를 수락한 사람끼리 오늘 공부 시간을 확인할 수 있어요. 학습일은 오전 6시에 새로 시작해요.</p>
@@ -129,7 +132,7 @@ export default function FriendsView({now}:{now:number}){
     {self&&!self.shared&&<p className="notice">공유를 끄면 친구들의 시간과 상태도 보이지 않아요.</p>}
     <label>이름 검색<input value={search} onChange={e=>setSearch(e.target.value)}/></label>{ranked.filter(r=>r.display_name.includes(search.trim())).map(row=><article key={row.member_id} className={`friend-rank-row ${row.is_me?'friend-self':''}`}>
      <div className="friend-rank-number">{row.rank===null?'—':`${row.rank}위`}</div>
-     <div className="friend-rank-user"><strong>{row.display_name}{row.is_me?' (나)':''} <TitleBadge label={row.title}/></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
+     <div className="friend-rank-user"><strong>{row.is_me?`${row.display_name} (나)`:<button type="button" className="statistics-member-link" aria-label={`${row.display_name}의 공부 통계`} onClick={()=>setStatsMember({id:row.member_id,name:row.display_name})}>{row.display_name}</button>} <TitleBadge label={row.title}/></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
      <div className="friend-rank-time">{friendTime(sharedStudyTime(row.total_ms,row.studying,boardReceivedAt,now,typeof navigator==='undefined'||navigator.onLine))}</div>
     </article>)}
     {ranked.length===0&&<p className="empty">아직 표시할 데이터가 없어요.</p>}
@@ -140,7 +143,7 @@ export default function FriendsView({now}:{now:number}){
       {outgoing.length>0&&<><h3>보낸 요청 · {outgoing.length}</h3>{outgoing.map(c=><div className="record-row" key={c.id}><div><strong>{c.nickname}</strong><p>상대방 수락 대기 중</p></div><button className="small" disabled={busy} onClick={()=>void act('friend_disconnect',{p_other:c.id},'친구 요청을 취소했어요.')}>요청 취소</button></div>)}</>}
     </div>}
    </section>
-   <section className="card below"><h2>내 친구</h2>{connected.length===0?<p>아직 친구가 없어요. 코드를 공유하고 요청을 수락하면 여기에 나타나요.</p>:connected.map(c=><div className="record-row" key={c.id}><strong>{c.nickname}</strong><button className="small" disabled={busy} onClick={()=>{if(confirm(`${c.nickname}님을 친구 목록에서 삭제할까요? 이후 서로 공부 시간이 보이지 않아요.`))void act('friend_disconnect',{p_other:c.id},'친구 관계를 삭제했어요.');}}>친구 삭제</button></div>)}<p className="fine">직접 친구 관계만 여기에서 삭제할 수 있어요. 그룹원은 그룹 메뉴에서 관리해요. 할 일·시간표·과거 기록·이메일은 공유하지 않아요.</p></section>
+   <section className="card below"><h2>내 친구</h2>{connected.length===0?<p>아직 친구가 없어요. 코드를 공유하고 요청을 수락하면 여기에 나타나요.</p>:connected.map(c=><div className="record-row" key={c.id}><strong><button type="button" className="statistics-member-link" aria-label={`${c.nickname}의 공부 통계`} onClick={()=>setStatsMember({id:c.id,name:c.nickname})}>{c.nickname}</button></strong><button className="small" disabled={busy} onClick={()=>{if(confirm(`${c.nickname}님을 친구 목록에서 삭제할까요? 이후 서로 공부 시간이 보이지 않아요.`))void act('friend_disconnect',{p_other:c.id},'친구 관계를 삭제했어요.');}}>친구 삭제</button></div>)}<p className="fine">직접 친구 관계만 여기에서 삭제할 수 있어요. 그룹원은 그룹 메뉴에서 관리해요. 공부 통계는 공개를 켠 사람의 날짜별·과목별 합계만 볼 수 있어요. 할 일·시간표·이메일은 비공개예요.</p></section>
   </>}
  </div>;
 }
