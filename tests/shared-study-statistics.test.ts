@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import test from 'node:test';
 import {PGlite} from '@electric-sql/pglite';
 
-test('shared statistics only return opted-in monthly totals to accepted friends and group members',async()=>{
+test('shared statistics automatically share monthly totals within accepted relationships',async()=>{
  const db=new PGlite();
  const [owner,friend,member,pending,stranger,group]=[1,2,3,4,5,6].map(n=>`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`);
  try{
@@ -37,16 +37,18 @@ test('shared statistics only return opted-in monthly totals to accepted friends 
   `);
   const migration=await readFile('supabase/migrations/016_shared_study_statistics.sql','utf8');
   await db.exec(migration);
+  const automatic=await readFile('supabase/migrations/017_automatic_study_statistics.sql','utf8');
+  await db.exec(automatic);
   const viewer=(id:string)=>db.exec(`set role authenticated; set request.jwt.claim.sub='${id}'`);
   const read=(month='2026-11-01')=>db.query('select public.chageun_shared_study_statistics($1,$2) as value',[owner,month]);
   const change=(enabled:boolean)=>db.query('select public.chageun_statistics_sharing($1) as enabled',[enabled]);
 
   await viewer(friend);
-  await assert.rejects(read(),/공개된 공부 통계/);
   await assert.rejects(db.query('update public.friend_profiles set share_statistics=true'),/permission denied/);
   await viewer(owner);
   assert.deepEqual((await db.query('select public.chageun_statistics_sharing() as enabled')).rows,[{enabled:false}]);
-  assert.deepEqual((await change(true)).rows,[{enabled:true}]);
+  await db.exec('reset role');
+  await db.query('update public.friend_profiles set share_enabled=false where user_id in ($1,$2)',[owner,friend]);
 
   for(const id of [friend,member]){
    await viewer(id);
@@ -62,17 +64,24 @@ test('shared statistics only return opted-in monthly totals to accepted friends 
   }
   for(const id of [pending,stranger,owner]){
    await viewer(id);
-   await assert.rejects(read(),/공개된 공부 통계/);
+   await assert.rejects(read(),/친구 또는 같은 그룹원/);
   }
   await db.exec('reset role; set role anon');
   await assert.rejects(read(),/permission denied/);
   await db.exec('reset role');
-  await db.exec(migration);
+  await db.exec(automatic);
   await viewer(owner);
-  assert.deepEqual((await db.query('select public.chageun_statistics_sharing() as enabled')).rows,[{enabled:true}]);
+  await change(true);
   await change(false);
   await viewer(friend);
-  await assert.rejects(read(),/공개된 공부 통계/);
+  assert.equal((await read()).rows.length,1);
+  await db.exec('reset role');
+  await db.query('delete from public.friend_links where user_a=$1 and user_b=$2',[owner,friend]);
+  await db.query('delete from public.study_group_members where group_id=$1 and user_id=$2',[group,member]);
+  for(const id of [friend,member]){
+   await viewer(id);
+   await assert.rejects(read(),/친구 또는 같은 그룹원/);
+  }
  }finally{
   await db.close();
  }

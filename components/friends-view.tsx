@@ -123,13 +123,13 @@ export default function FriendsView({now}:{now:number}){
      <div className="friend-code-panel"><span className="eyebrow">MY FRIEND CODE</span><strong>{profile.code}</strong><button className="small" onClick={async()=>{try{await navigator.clipboard.writeText(profile.code);setNotice('친구 코드를 복사했어요.');}catch{setNotice('코드를 길게 눌러 직접 복사해 주세요.');}}}>코드 복사</button><p>이 코드로 친구 요청을 받을 수 있어요. 이메일은 공개되지 않아요.</p></div>
      <form onSubmit={saveProfile}><label>내 별명<input value={nickname} onChange={e=>setNickname(e.target.value)} maxLength={20} minLength={2} required placeholder="내 별명"/></label><button className="small blue" disabled={busy}>별명 저장</button></form>
     </div>
-    <div className="friend-share-strip"><div><strong>오늘 공부 시간 공유</strong><p>{profile.shareEnabled?'직접 친구 또는 같은 그룹원에게 오늘 순공 시간·공부 상태·최근 접속이 보여요.':'내 공부 시간과 상태를 친구에게 공개하지 않아요. 이때 나도 친구의 시간을 볼 수 없어요.'}</p></div><button className="small" disabled={busy} onClick={()=>void share(!profile.shareEnabled)}>{profile.shareEnabled?'공유 끄기':'공유 켜기'}</button></div></details>
+    <div className="friend-share-strip"><div><strong>오늘 공부 시간 공유</strong><p>{profile.shareEnabled?'직접 친구 또는 같은 그룹원에게 오늘 순공 시간·공부 상태·최근 접속이 보여요.':'오늘의 순위에서 내 순공 시간·공부 상태·최근 접속을 숨겨요. 나도 다른 사람의 순위를 볼 수 없어요. 이름을 눌러 보는 공부 통계는 친구와 그룹원에게 공유돼요.'}</p></div><button className="small" disabled={busy} onClick={()=>void share(!profile.shareEnabled)}>{profile.shareEnabled?'공유 끄기':'공유 켜기'}</button></div></details>
    </>}
   </section>
   {profile&&<>
    <section className="card below social-rank"><div className="section-title"><h2>오늘의 친구 순공 시간</h2><span>나 + 직접 친구·그룹원</span></div>
     <p>읽을 때마다 서버 기록에서 계산하며 서버 기록은 약 45초마다 다시 확인하고, 공부 중인 시간은 화면에서 초 단위로 갱신해요. 동점은 같은 순위로 표시해요. 공부 시간은 성과를 평가하는 점수가 아니라 참고 정보예요.</p>
-    {self&&!self.shared&&<p className="notice">공유를 끄면 친구들의 시간과 상태도 보이지 않아요.</p>}
+    {self&&!self.shared&&<p className="notice">오늘 공부 시간 공유가 꺼져 있어 순위에서 친구들의 시간과 상태가 표시되지 않아요.</p>}
     <label>이름 검색<input value={search} onChange={e=>setSearch(e.target.value)}/></label>{ranked.filter(r=>r.display_name.includes(search.trim())).map(row=><article key={row.member_id} className={`friend-rank-row ${row.is_me?'friend-self':''}`}>
      <div className="friend-rank-number">{row.rank===null?'—':`${row.rank}위`}</div>
      <div className="friend-rank-user"><strong>{row.is_me?`${row.display_name} (나)`:<button type="button" className="statistics-member-link" aria-label={`${row.display_name}의 공부 통계`} onClick={()=>setStatsMember({id:row.member_id,name:row.display_name})}>{row.display_name}</button>} <TitleBadge label={row.title}/></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
@@ -143,7 +143,7 @@ export default function FriendsView({now}:{now:number}){
       {outgoing.length>0&&<><h3>보낸 요청 · {outgoing.length}</h3>{outgoing.map(c=><div className="record-row" key={c.id}><div><strong>{c.nickname}</strong><p>상대방 수락 대기 중</p></div><button className="small" disabled={busy} onClick={()=>void act('friend_disconnect',{p_other:c.id},'친구 요청을 취소했어요.')}>요청 취소</button></div>)}</>}
     </div>}
    </section>
-   <section className="card below"><h2>내 친구</h2>{connected.length===0?<p>아직 친구가 없어요. 코드를 공유하고 요청을 수락하면 여기에 나타나요.</p>:connected.map(c=><div className="record-row" key={c.id}><strong><button type="button" className="statistics-member-link" aria-label={`${c.nickname}의 공부 통계`} onClick={()=>setStatsMember({id:c.id,name:c.nickname})}>{c.nickname}</button></strong><button className="small" disabled={busy} onClick={()=>{if(confirm(`${c.nickname}님을 친구 목록에서 삭제할까요? 이후 서로 공부 시간이 보이지 않아요.`))void act('friend_disconnect',{p_other:c.id},'친구 관계를 삭제했어요.');}}>친구 삭제</button></div>)}<p className="fine">직접 친구 관계만 여기에서 삭제할 수 있어요. 그룹원은 그룹 메뉴에서 관리해요. 공부 통계는 공개를 켠 사람의 날짜별·과목별 합계만 볼 수 있어요. 할 일·시간표·이메일은 비공개예요.</p></section>
+   <section className="card below"><h2>내 친구</h2>{connected.length===0?<p>아직 친구가 없어요. 코드를 공유하고 요청을 수락하면 여기에 나타나요.</p>:connected.map(c=><div className="record-row" key={c.id}><strong><button type="button" className="statistics-member-link" aria-label={`${c.nickname}의 공부 통계`} onClick={()=>setStatsMember({id:c.id,name:c.nickname})}>{c.nickname}</button></strong><button className="small" disabled={busy} onClick={()=>{if(confirm(`${c.nickname}님을 친구 목록에서 삭제할까요? 같은 그룹에 속해 있다면 서로의 공부 통계를 계속 볼 수 있어요.`))void act('friend_disconnect',{p_other:c.id},'친구 관계를 삭제했어요.');}}>친구 삭제</button></div>)}<p className="fine">직접 친구 관계만 여기에서 삭제할 수 있어요. 그룹원은 그룹 메뉴에서 관리해요. 직접 친구와 같은 그룹원은 서로의 날짜별·과목별 공부 시간 합계를 볼 수 있어요. 할 일·시간표·이메일은 비공개예요.</p></section>
   </>}
  </div>;
 }

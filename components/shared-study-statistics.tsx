@@ -31,7 +31,7 @@ export default function SharedStudyStatistics({member,now,onClose}:{member:Stati
     const {data,error}=await client.rpc('chageun_shared_study_statistics',{
      p_user:member.id,p_month:month+'-01'
     }).abortSignal(controller.signal);
-    if(error)throw Error(error.code==='42501'?'공개된 공부 통계가 없어요.':'공부 통계를 불러오지 못했어요.');
+    if(error)throw Error(error.code==='42501'?'친구 또는 같은 그룹원의 공부 통계만 볼 수 있어요.':'공부 통계를 불러오지 못했어요.');
     const subjects=data.subjects as {id:string;name:string;colorIndex?:number}[];
     const names=new Map(subjects.map(subject=>[subject.id,subject.name]));
     const byDay=new Map<string,StudyStatisticsPoint['subjects']>();

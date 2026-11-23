@@ -126,7 +126,7 @@ export default function GroupsView({now,userId}:{now:number;userId:string}){
   {statsMember&&<SharedStudyStatistics key={statsMember.id} member={statsMember} now={now} onClose={()=>setStatsMember(null)}/>}
   <section className="card">
    <div className="section-title"><h2>함께 공부하는 그룹</h2><button className="small" disabled={busy||loading} onClick={()=>void refresh(true)}>새로고침</button></div>
-   <p className="fine">그룹에 가입해도 1:1 친구가 자동 추가되지는 않지만, 그룹 안에서는 별도 친구 신청 없이 서로 연결돼요. 공부 통계는 공개를 켠 사람의 날짜별·과목별 합계만 볼 수 있어요. 할 일·시간표·이메일은 비공개예요.</p>
+   <p className="fine">그룹에 가입해도 1:1 친구가 자동 추가되지는 않지만, 그룹 안에서는 별도 친구 신청 없이 서로 연결돼요. 직접 친구와 같은 그룹원은 서로의 날짜별·과목별 공부 시간 합계를 볼 수 있어요. 할 일·시간표·이메일은 비공개예요.</p>
    {loading&&<p role="status">그룹을 불러오는 중…</p>}
    {error&&<p role="alert" className="notice error">{error}</p>}
    {notice&&<p role="status" className="notice">{notice}</p>}
