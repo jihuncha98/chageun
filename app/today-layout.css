@@ -192,6 +192,8 @@
 .app .chageun-today .today-columns .task-time-action {
   display: grid;
   place-items: center;
+  justify-content: center;
+  padding: 0;
   min-height: 44px;
   width: 44px;
   border: 0;
@@ -200,7 +202,33 @@
   color: var(--accent-ink);
 }
 .app .chageun-today .today-columns .task-time-action:disabled { opacity: .5; }
-.app .chageun-today .today-columns .task-time-play { opacity: 1; font-size: 14px; }
+.app .chageun-today .today-columns .task-time-play { opacity: 1; display: block; }
+.chageun-today .today-reuse-card { position: relative; min-width: 0; }
+.app .chageun-today .today-reuse-card button.reuse-option {
+  width: 100%;
+  padding-inline-end: 44px;
+}
+.chageun-today .today-reuse-remove {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: 0;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.125rem;
+  line-height: 1;
+}
+.chageun-today .today-reuse-remove:hover:not(:disabled) {
+  background-color: var(--accent-soft);
+  color: var(--accent-ink);
+}
 .chageun-today .today-columns .task-menu-trigger { width: 36px; height: 44px; }
 .chageun-today .today-columns :is(.task-add-toggle, .today-outline-action) {
   min-height: 44px;

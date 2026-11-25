@@ -4,7 +4,7 @@ import {validCalendarDate} from './exam-planning';
 export const DAY = 86400000;
 export type Row = {id:string; deleted_at:string|null};
 export type Subject = Row & {name:string; archived:boolean; colorIndex?:number};
-export type Task = Row & {day:string; subjectId:string; title:string; done:boolean; subjectTimer?:true};
+export type Task = Row & {day:string; subjectId:string; title:string; done:boolean; subjectTimer?:true; hiddenFromReuse?:true};
 export type Entry = Row & {taskId:string|null; kind:'study'|'nap'; start:number; end:number|null; confirmed:number; device:string; napMinutes:number};
 export type Lesson = Row & {weekday:number; start:string; end:string; label:string; room:string};
 export type Note = Row & {day:string; text:string};
@@ -49,18 +49,30 @@ export function validate(s:Study){
  for(const l of alive(s.lessons)){if(!Number.isInteger(l.weekday)||l.weekday<0||l.weekday>6||!/^([01]\d|2[0-3]):[0-5]\d$/.test(l.start)||!/^([01]\d|2[0-3]):[0-5]\d$|^24:00$/.test(l.end)||l.start>=l.end||!l.label.trim())throw Error('시간표의 요일·시작·종료·내용을 확인해 주세요.');}
  const lessons=alive(s.lessons);for(let i=0;i<lessons.length;i++)for(let j=i+1;j<lessons.length;j++)if(lessons[i].weekday===lessons[j].weekday&&lessons[i].start<lessons[j].end&&lessons[j].start<lessons[i].end)throw Error('같은 요일의 시간표가 겹쳐요.');
 }
+const reuseKey=(task:Task)=>`${task.subjectId}\u0000${normalize(task.title).toLocaleLowerCase()}`;
+
+/** Hide the matching past suggestions without deleting their tasks or study entries. */
+export function hideReusableTask(s:Study,sourceId:string,day:string){
+ dayStart(day);
+ const historical=alive(s.tasks).filter(task=>!task.subjectTimer&&task.day<day);
+ const source=historical.find(task=>task.id===sourceId);
+ if(!source)return;
+ const key=reuseKey(source);
+ for(const task of historical)if(reuseKey(task)===key)task.hiddenFromReuse=true;
+}
+
 /** Find previous non-deleted tasks that can be reused on the chosen study day. */
 export function reusableTasks(s:Study,day:string):Task[]{
  dayStart(day);
  const available=new Set(alive(s.subjects).map(x=>x.id));
- const existing=new Set(alive(s.tasks).filter(t=>t.day===day&&!t.subjectTimer).map(t=>`${t.subjectId}\u0000${normalize(t.title).toLocaleLowerCase()}`));
+ const existing=new Set(alive(s.tasks).filter(t=>t.day===day&&!t.subjectTimer).map(reuseKey));
  const seen=new Set<string>();
  return alive(s.tasks)
   .map((task,index)=>({task,index}))
-  .filter(({task})=>!task.subjectTimer&&task.day<day&&available.has(task.subjectId))
+  .filter(({task})=>!task.subjectTimer&&!task.hiddenFromReuse&&task.day<day&&available.has(task.subjectId))
   .sort((a,b)=>b.task.day.localeCompare(a.task.day)||b.index-a.index)
   .filter(({task})=>{
-   const key=`${task.subjectId}\u0000${normalize(task.title).toLocaleLowerCase()}`;
+   const key=reuseKey(task);
    if(existing.has(key)||seen.has(key))return false;
    seen.add(key);return true;
   })
@@ -69,11 +81,11 @@ export function reusableTasks(s:Study,day:string):Task[]{
 /** Copy only the subject and title: never copy completion state or timer entries. */
 export function reuseTask(s:Study,sourceId:string,day:string):Task {
  dayStart(day);
- const template=alive(s.tasks).find(t=>t.id===sourceId&&!t.subjectTimer);
+ const template=alive(s.tasks).find(t=>t.id===sourceId&&!t.subjectTimer&&!t.hiddenFromReuse);
  if(!template)throw Error('이전 할 일을 찾을 수 없어요.');
  const sub=alive(s.subjects).find(x=>x.id===template.subjectId);
  if(!sub)throw Error('과목을 찾을 수 없어요.');
- if(alive(s.tasks).some(t=>!t.subjectTimer&&t.day===day&&t.subjectId===template.subjectId&&normalize(t.title).toLocaleLowerCase()===normalize(template.title).toLocaleLowerCase()))throw Error('이 날짜에 같은 할 일이 이미 있어요.');
+ if(alive(s.tasks).some(t=>!t.subjectTimer&&t.day===day&&reuseKey(t)===reuseKey(template)))throw Error('이 날짜에 같은 할 일이 이미 있어요.');
  const copy:Task={id:uid(),deleted_at:null,day,subjectId:template.subjectId,title:template.title,done:false};
  s.tasks.push(copy);
  if(sub.archived)sub.archived=false;

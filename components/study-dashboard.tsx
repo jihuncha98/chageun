@@ -18,7 +18,7 @@ import ProfileSettings from './profile-settings';
 import FocusMode from './focus-mode';
 import {shouldShowFocusMode} from '../lib/focus-mode';
 import {ddayLabel,kstToday} from '../lib/exam-planning';
-import {DAY,activeEntry,alive,clock,cutEntry,dayStart,duration,localInput,nextDay,normalize,parseLocal,reusableTasks,reuseTask,scheduleNow,sliceDay,start,stop,subjectKey,total,uid,type Entry,type Study,type Task,type Lesson} from '../lib/study';
+import {DAY,activeEntry,alive,clock,cutEntry,dayStart,duration,hideReusableTask,localInput,nextDay,normalize,parseLocal,reusableTasks,reuseTask,scheduleNow,sliceDay,start,stop,subjectKey,total,uid,type Entry,type Study,type Task,type Lesson} from '../lib/study';
 function describeRecord(row:object){const r=row as Record<string,unknown>;const status=r.deleted_at?' · 휴지통':'';if('start' in r&&typeof r.start==='number')return `${localInput(r.start).replace('T',' ')} → ${r.end===null?'측정 중':localInput(Number(r.end)).replace('T',' ')}${status}`;return `${r.title??r.name??r.label??r.text??'기록'}${'day' in r?' · '+r.day:''}${r.done?' · 완료':''}${r.archived?' · 보관 중':''}${status}`;}
 const weekdays=['일','월','화','수','목','금','토'];
 function field(f:FormData,key:string){return String(f.get(key)??'');}
@@ -167,7 +167,9 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,onUnreadCoun
    <span className="subject-tag task-subject-tag" style={{background:color.soft,color:color.ink,'--subject-soft':color.soft,boxShadow:'inset 3px 0 '+color.solid} as CSSProperties} title={taskSubject}>{taskSubject}</span>
    <strong className="task-title" title={t.title}>{t.title}</strong>
    <span className="today-task-duration">{taskTime}</span>
-   <button className="task-time-action" type="button" title={taskRunning?'타이머 정지':t.done?'완료를 취소한 후 시작할 수 있어요':'이 할 일의 타이머 시작'} aria-label={`${t.title} · ${taskTime} · ${taskRunning?'정지':t.done?'완료됨':'타이머 시작'}`} disabled={v.busy||(!taskRunning&&!canStart)} onClick={()=>taskRunning?void write(d=>stop(d,Date.now())):begin(t.id)}><span className="task-time-play" aria-hidden="true">{taskRunning?'■':'▶'}</span></button>
+   <button className="task-time-action" type="button" title={taskRunning?'타이머 정지':t.done?'완료를 취소한 후 시작할 수 있어요':'이 할 일의 타이머 시작'} aria-label={`${t.title} · ${taskTime} · ${taskRunning?'정지':t.done?'완료됨':'타이머 시작'}`} disabled={v.busy||(!taskRunning&&!canStart)} onClick={()=>taskRunning?void write(d=>stop(d,Date.now())):begin(t.id)}><svg className="task-time-play" viewBox="0 0 16 16" width={16} height={16} fill="currentColor" aria-hidden="true">
+    {taskRunning?<rect x="3" y="3" width="10" height="10" rx="1"/>:<path d="M3 2L13 8L3 14Z"/>}
+   </svg></button>
    <details className="task-menu-wrap"><summary className="task-menu-trigger" aria-label={`${t.title} 더보기`} title="할 일 더보기">⋯</summary><div className="task-menu-items">
     <button type="button" disabled={v.busy||(!taskRunning&&!canStart)} onClick={e=>{e.currentTarget.closest('details')?.removeAttribute('open');if(taskRunning)void write(d=>stop(d,Date.now()));else begin(t.id);}}>{taskRunning?'■ 타이머 정지':'▶ 타이머 시작'}</button>
     <button type="button" onClick={e=>{e.currentTarget.closest('details')?.removeAttribute('open');setEditing(t);setShowTaskForm(true);}} >수정</button>
@@ -179,7 +181,21 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,onUnreadCoun
  </div>
  <div className="task-reuse-footer">
   <button className="task-reuse-toggle" type="button" aria-expanded={showReusePanel} onClick={()=>setShowReusePanel(x=>!x)}><span>이전에 했던 할 일</span><small>{previousTasks.length}개 재사용 가능</small><span aria-hidden="true">{showReusePanel?'⌃':'⌄'}</span></button>
-  {showReusePanel&&<div className="reuse-panel task-reuse-expanded">{previousTasks.length?<><div className="reuse-list">{shownPreviousTasks.map(t=><button key={t.id} className="small reuse-option" type="button" disabled={v.busy||v.review||!!v.remote} title={`${subject(t.subjectId)} · ${t.title} — ${day}에 추가`} onClick={()=>void write(d=>{reuseTask(d,t.id,day);})}><span>＋</span><span className="reuse-label"><small>{subject(t.subjectId)}</small><strong>{t.title}</strong></span></button>)}</div>{previousTasks.length>6&&<button type="button" className="small reuse-more" onClick={()=>setShowAllPreviousTasks(x=>!x)}>{showAllPreviousTasks?'간단히 보기':`이전 할 일 ${previousTasks.length-6}개 더 보기`}</button>}</>:<p className="fine">재사용할 이전 할 일이 없습니다.</p>}</div>}
+  {showReusePanel&&<div className="reuse-panel task-reuse-expanded">
+   {previousTasks.length>0?<><div className="reuse-list">{shownPreviousTasks.map(t=>{
+    const label=`${subject(t.subjectId)} · ${t.title}`;
+    const disabled=v.busy||v.review||!!v.remote;
+    return <div key={t.id} className="today-reuse-card">
+     <button className="small reuse-option" type="button" disabled={disabled} title={`${label} — ${day}에 추가`}
+      onClick={()=>void write(d=>{reuseTask(d,t.id,day);})}>
+      <span>＋</span><span className="reuse-label"><small>{subject(t.subjectId)}</small><strong>{t.title}</strong></span>
+     </button>
+     <button className="today-reuse-remove" type="button" disabled={disabled}
+      aria-label={`${label} 재사용 목록에서 숨기기`} title="재사용 목록에서 숨기기"
+      onClick={()=>void write(d=>hideReusableTask(d,t.id,day))}>×</button>
+    </div>;
+   })}</div>{previousTasks.length>6&&<button type="button" className="small reuse-more" onClick={()=>setShowAllPreviousTasks(x=>!x)}>{showAllPreviousTasks?'간단히 보기':`이전 할 일 ${previousTasks.length-6}개 더 보기`}</button>}</>:<p className="fine">재사용할 이전 할 일이 없습니다.</p>}
+  </div>}
  </div>
  </section>
   <div className="today-records">

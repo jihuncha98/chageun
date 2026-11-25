@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {emptyStudy,start,stop,validate,total,dayStart,cutEntry,mergeStudy,nextDay,reusableTasks,reuseTask,scheduleNow,subjectKey,type Study,type Entry} from '../lib/study';
+import {emptyStudy,start,stop,validate,total,dayStart,cutEntry,mergeStudy,nextDay,hideReusableTask,reusableTasks,reuseTask,scheduleNow,subjectKey,type Study,type Entry} from '../lib/study';
 function fixture():Study{const s=emptyStudy();s.subjects.push({id:'math',name:'수학',archived:false,deleted_at:null});s.tasks.push({id:'a',day:'2026-01-01',subjectId:'math',title:'오답',done:false,deleted_at:null},{id:'b',day:'2026-01-01',subjectId:'math',title:'문제',done:false,deleted_at:null});return s;}
 const at=(h:number,m=0)=>dayStart('2026-01-01')+(h-6)*3600000+m*60000;
 const entry=(id:string,start:number,end:number|null):Entry=>({id,taskId:'a',kind:'study',start,end,confirmed:start,device:'pc',deleted_at:null,napMinutes:20});
@@ -57,3 +57,17 @@ test('stop never marks a task complete; a stopped task can be restarted immediat
 });
 
 test('nap timer cannot be created after removal, and a rejected request does not stop a running study timer',()=>{const s=fixture();start(s,'a','pc',at(8));const original=s.entries[0].id;assert.throws(()=>start(s,null as unknown as string,'pc',at(8,1)),/진행 가능한 할 일/);assert.equal(s.entries.length,1);assert.equal(s.entries[0].id,original);assert.equal(s.entries[0].end,null);stop(s,at(8,2));validate(s);assert.equal(s.entries[0].kind,'study');});
+
+test('hiding a suggestion suppresses older duplicates and preserves past tasks and study time',()=>{
+ const s=fixture();
+ s.tasks.push({...s.tasks[0],id:'recent',day:'2026-01-02',title:' 오답 '});
+ s.entries.push(entry('past-session',at(8),at(9)));
+ hideReusableTask(s,'recent','2026-01-03');
+ assert.deepEqual(reusableTasks(s,'2026-01-03').map(task=>task.id),['b']);
+ assert.deepEqual(reusableTasks(s,'2026-01-04').map(task=>task.id),['b']);
+ assert.throws(()=>reuseTask(s,'a','2026-01-03'),/이전 할 일을 찾을 수 없어요/);
+ assert.equal(s.tasks[0].deleted_at,null);
+ assert.equal(s.tasks[2].deleted_at,null);
+ assert.equal(total(s,'2026-01-01',at(9)),3600000);
+ validate(s);
+});
