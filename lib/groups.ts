@@ -4,7 +4,7 @@ export type PendingGroupInvitee={userId:string;nickname:string};
 export type StudyGroup={id:string;name:string;ownerId:string;isOwner:boolean;createdAt:string;members:GroupMember[];pendingInvites:PendingGroupInvitee[]};
 export type IncomingGroupInvite={id:string;name:string;ownerName:string;invitedAt:string};
 export type GroupOverview={groups:StudyGroup[];invitations:IncomingGroupInvite[]};
-export type GroupBoardRow={member_id:string;title?:string;display_name:string;total_ms:number|null;studying:boolean|null;last_seen_at:string|null;is_me:boolean;shared:boolean;position:number|null};
+export type GroupBoardRow={member_id:string;title?:string;title_level?:number;display_name:string;total_ms:number|null;studying:boolean|null;last_seen_at:string|null;is_me:boolean;shared:boolean;position:number|null};
 export const GROUP_BOARD_PAGE_SIZE=15;
 export function validGroupName(name:string):boolean{return name.trim().length>=2&&name.trim().length<=40;}
 export function groupPageCount(memberCount:number,pageSize=GROUP_BOARD_PAGE_SIZE):number{return Math.max(1,Math.ceil(Math.max(0,memberCount)/pageSize));}

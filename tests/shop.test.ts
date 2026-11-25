@@ -27,6 +27,8 @@ test('shop transactions, launch cutoff, day cap, adjustments, permissions and re
  create table public.study_session_facts(user_id uuid,entry_id text,start_ms bigint,end_ms bigint,is_deleted boolean default false,primary key(user_id,entry_id));`);
  const migration=await readFile(new URL('../supabase/migrations/013_shop.sql',import.meta.url),'utf8');
  await db.exec(migration);await db.exec(migration);
+ const expansion=await readFile(new URL('../supabase/migrations/018_title_expansion.sql',import.meta.url),'utf8');
+ await db.exec(expansion);
  const login=(id:string)=>db.exec(`reset role;set role authenticated;set request.jwt.claim.sub='${id}'`);
  const act=(action:string,item:string|null,target:string|null,n:number|null,options={},id=crypto.randomUUID())=>db.query('select public.chageun_shop_change($1,$2,$3,$4,$5,$6,$7)',[id,action,item,target,n,'테스트',JSON.stringify(options)]);
  const state=async()=>(await db.query<{balance:number;items:{id:string;owned:boolean;equipped:boolean}[]}>("select (j->>'balance')::int balance,j->'items' items from public.chageun_shop_read() j")).rows[0];
@@ -43,6 +45,21 @@ test('shop transactions, launch cutoff, day cap, adjustments, permissions and re
  await db.exec('reset role;update public.study_session_facts set is_deleted=true');await login(member);assert.equal((await state()).balance,-50);
  await db.exec('reset role;update public.study_session_facts set is_deleted=false');await login(member);assert.equal((await state()).balance,-30);
  await login(admin);await act('revoke_item','title2',member,null);await login(member);assert((await state()).items.find(i=>i.id==='title1')?.equipped);
+ await assert.rejects(act('buy','title8',null,null),/이전 칭호/);
+ await login(admin);await act('credit',null,member,12530);await act('grant_item','title7',member,null);
+ await login(member);await assert.rejects(act('buy','title9',null,null),/이전 칭호/);
+ for(const id of ['title8','title9','title10']){
+  await act('buy',id,null,null);
+  assert((await state()).items.find(i=>i.id===id)?.equipped);
+ }
+ assert.equal((await state()).balance,0);
+ const social=()=>db.query('select title,title_level from public.chageun_social_title_labels($1)',[[member]]);
+ assert.deepEqual((await social()).rows,[{title:'차지훈',title_level:10}]);
+ await login(admin);await act('catalog','title10',admin,7000,{active:true,label:'새 이름'});
+ await db.exec('reset role');await db.exec(expansion);
+ await login(member);
+ assert.deepEqual((await social()).rows,[{title:'새 이름',title_level:10}]);
+ assert((await state()).items.some(i=>i.id==='title10'&&i.owned&&i.equipped));
  }finally{await db.close();}
 });
 

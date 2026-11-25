@@ -75,7 +75,7 @@ export default function GroupsView({now,userId}:{now:number;userId:string}){
     members:g.members.map(m=>({...m,nickname:names.get(m.userId)?.display_name||'차근 사용자'})),
     pendingInvites:g.pendingInvites.map(m=>({...m,nickname:names.get(m.userId)?.display_name||'차근 사용자'}))
    }))};
-   const namedBoard=nextBoard.map(row=>({...row,display_name:names.get(row.member_id)?.display_name||'차근 사용자',title:names.get(row.member_id)?.title||'차근 사용자'}));
+   const namedBoard=nextBoard.map(row=>({...row,display_name:names.get(row.member_id)?.display_name||'차근 사용자',title:names.get(row.member_id)?.title||'차근 사용자',title_level:names.get(row.member_id)?.title_level}));
    if(!mounted.current||req!==serial.current)return;
    setSummary(totals);
    setShareEnabled((init.data as {shareEnabled?:boolean}|null)?.shareEnabled!==false);
@@ -148,7 +148,7 @@ export default function GroupsView({now,userId}:{now:number;userId:string}){
     {!shareEnabled&&<p className="notice">{groupViewDescription(false)}</p>}
     <div className="group-rank-list">{board.map(row=><article key={row.member_id} className={`friend-rank-row ${row.is_me?'friend-self':''}`}>
      <div className="friend-rank-number">{row.position===null?'—':`${row.position}위`}</div>
-     <div className="friend-rank-user"><strong>{row.is_me?`${row.display_name} (나)`:<button type="button" className="statistics-member-link" aria-label={`${row.display_name}의 공부 통계`} onClick={()=>setStatsMember({id:row.member_id,name:row.display_name})}>{row.display_name}</button>} <TitleBadge label={row.title}/></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
+     <div className="friend-rank-user"><strong>{row.is_me?`${row.display_name} (나)`:<button type="button" className="statistics-member-link" aria-label={`${row.display_name}의 공부 통계`} onClick={()=>setStatsMember({id:row.member_id,name:row.display_name})}>{row.display_name}</button>} <TitleBadge label={row.title} level={row.title_level}/></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
      <div className="friend-rank-time">{friendTime(sharedStudyTime(row.total_ms,row.studying,boardReceivedAt,now,typeof navigator==='undefined'||navigator.onLine))}</div>
     </article>)}{board.length===0&&<p className="empty">표시할 순위가 없어요.</p>}</div>
     {pageCount>1&&<div className="record-pagination" role="navigation" aria-label="그룹 순위 페이지">

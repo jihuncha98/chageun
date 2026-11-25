@@ -48,7 +48,7 @@ export default function FriendsView({now}:{now:number}){
    const names=await socialNames([...next.connections.map(c=>c.id),...rawBoard.map(r=>r.member_id)]).catch(()=>new Map());
    if(!alive.current||requestNumber!==refreshSeq.current)return;
    setOverview({...next,connections:next.connections.map(c=>({...c,nickname:names.get(c.id)?.display_name||'차근 사용자'}))});
-   setBoard(rawBoard.map(r=>({...r,display_name:names.get(r.member_id)?.display_name||'차근 사용자',title:names.get(r.member_id)?.title||'차근 사용자'})));
+   setBoard(rawBoard.map(r=>({...r,display_name:names.get(r.member_id)?.display_name||'차근 사용자',title:names.get(r.member_id)?.title||'차근 사용자',title_level:names.get(r.member_id)?.title_level})));
    setBoardReceivedAt(Date.now());
    setError('');
   }catch(e){if(alive.current&&requestNumber===refreshSeq.current)setError(message(e));}
@@ -132,7 +132,7 @@ export default function FriendsView({now}:{now:number}){
     {self&&!self.shared&&<p className="notice">오늘 공부 시간 공유가 꺼져 있어 순위에서 친구들의 시간과 상태가 표시되지 않아요.</p>}
     <label>이름 검색<input value={search} onChange={e=>setSearch(e.target.value)}/></label>{ranked.filter(r=>r.display_name.includes(search.trim())).map(row=><article key={row.member_id} className={`friend-rank-row ${row.is_me?'friend-self':''}`}>
      <div className="friend-rank-number">{row.rank===null?'—':`${row.rank}위`}</div>
-     <div className="friend-rank-user"><strong>{row.is_me?`${row.display_name} (나)`:<button type="button" className="statistics-member-link" aria-label={`${row.display_name}의 공부 통계`} onClick={()=>setStatsMember({id:row.member_id,name:row.display_name})}>{row.display_name}</button>} <TitleBadge label={row.title}/></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
+     <div className="friend-rank-user"><strong>{row.is_me?`${row.display_name} (나)`:<button type="button" className="statistics-member-link" aria-label={`${row.display_name}의 공부 통계`} onClick={()=>setStatsMember({id:row.member_id,name:row.display_name})}>{row.display_name}</button>} <TitleBadge label={row.title} level={row.title_level}/></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
      <div className="friend-rank-time">{friendTime(sharedStudyTime(row.total_ms,row.studying,boardReceivedAt,now,typeof navigator==='undefined'||navigator.onLine))}</div>
     </article>)}
     {ranked.length===0&&<p className="empty">아직 표시할 데이터가 없어요.</p>}

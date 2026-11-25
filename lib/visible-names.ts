@@ -29,11 +29,14 @@ export function visibleLabel(names:ReadonlyMap<string,VisibleName>,id:string,fal
 }
 
 export async function socialNames(ids:readonly string[]){
- const names=new Map<string,{display_name:string|null;title:string}>();
+ const names=new Map<string,{display_name:string|null;title:string;title_level?:number}>();
  const unique=[...new Set(ids)];
  for(let i=0;supabase&&i<unique.length;i+=100){
   const batch=unique.slice(i,i+100);
-  const response=await supabase.rpc('chageun_social_labels',{p_users:batch});
+  const current=await supabase.rpc('chageun_social_title_labels',{p_users:batch});
+  const response=current.error?.code==='PGRST202'
+   ? await supabase.rpc('chageun_social_labels',{p_users:batch})
+   : current;
   if(response.error){
    for(const [id,row] of await fetchVisibleNames(batch))names.set(id,{display_name:row.display_name,title:'차근 사용자'});
   }else for(const row of response.data??[])names.set(row.user_id,row);
