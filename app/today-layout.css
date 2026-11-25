@@ -94,92 +94,156 @@
   background: var(--panel);
 }
 .chageun-today .today-date-row button { min-width: 44px; min-height: 44px; }
-.chageun-today .today-timer-hero {
+.chageun-today .today-summary {
   display: grid;
-  justify-items: center;
-  gap: 7px;
-  margin-bottom: 16px;
-  color: var(--muted);
-}
-.chageun-today .today-timer-hero strong {
-  color: var(--text);
-  font-size: clamp(2.6rem, 7vw, 5rem);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.05;
-}
-.chageun-today .today-hero-start,
-.chageun-today .today-subject-play {
-  color: white;
-  border: 0;
-  border-radius: 50%;
-  width: 44px;
-  height: 44px;
-}
-.chageun-today .today-hero-start { background: var(--accent-strong, #245dd5); width: 52px; height: 52px; }
-.chageun-today .today-timer-hero select { width: auto; margin: 0; }
-.chageun-today .today-panel-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: start;
-  gap: 14px;
-}
-.chageun-today .today-panel-grid > * { min-width: 0; padding: clamp(12px, 2vw, 22px); }
-.chageun-today .today-agenda-grid { margin-bottom: 14px; align-items: stretch; }
-.chageun-today .today-agenda-grid .exam-today-banner { margin: 0; }
-.chageun-today .today-school h2, .chageun-today .today-school p { margin: 0 0 6px; }
-.chageun-today .today-school strong { color: var(--accent-strong); }
-.chageun-today .today-record-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
-.chageun-today .today-record-grid .timeline-scroll { max-height: clamp(250px, 42dvh, 610px); }
-.chageun-today .today-subject-form { margin-bottom: 12px; }
-.chageun-today .today-subject-row {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto 44px;
+  grid-template-columns: 30fr 36fr 34fr;
   align-items: center;
-  gap: 8px;
-  min-height: 52px;
-  border-bottom: 1px solid var(--line);
+  padding: 16px 12px;
+  margin-bottom: 20px;
+  background: var(--accent-soft);
+  border-radius: 16px;
 }
-.chageun-today .today-subject-row strong { overflow-wrap: anywhere; }
-.chageun-today .today-subject-row time { font-size: .84rem; font-variant-numeric: tabular-nums; color: var(--muted); }
-.chageun-today .today-subject-row .task-menu-wrap { position: relative; }
-.chageun-today .today-subject-row summary { display: grid; place-items: center; width: 44px; min-height: 44px; cursor: pointer; }
-.chageun-today .today-subject-row .task-menu-items {
-  position: absolute;
-  right: 0;
-  z-index: 10;
-  display: grid;
-  min-width: max-content;
-  padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
+.chageun-today .today-summary-cell {
+  min-width: 0;
+  padding-inline: clamp(10px, 2.3vw, 32px);
 }
-.chageun-today .today-subject-row .task-menu-items button { border: 0; background: none; color: var(--text); min-height: 44px; text-align: left; }
-.chageun-today .today-hidden-subjects { margin-top: 12px; }
-.chageun-today .today-slide-switch {
-  position: sticky;
-  bottom: var(--bottom-bar-size);
-  z-index: 32;
+.chageun-today .today-summary-cell + .today-summary-cell {
+  border-inline-start: 1px solid var(--accent-border);
+}
+.chageun-today .today-summary-cell h2 {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: clamp(.81rem, 1.35vw, 1rem);
+  font-weight: 650;
+}
+.chageun-today .today-study-total {
+  display: block;
+  font-size: clamp(1.65rem, 4vw, 3rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.12;
+}
+.chageun-today .today-upcoming-exam {
   display: flex;
-  justify-content: center;
-  gap: 5px;
-  padding: 7px;
-  margin-top: 12px;
-  background: var(--panel);
-  border-top: 1px solid var(--line);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
 }
-.chageun-today .today-slide-switch button {
+.chageun-today .today-upcoming-exam strong,
+.chageun-today .today-school strong {
+  overflow-wrap: anywhere;
+  font-size: clamp(.94rem, 1.8vw, 1.3rem);
+}
+.chageun-today .today-upcoming-exam span {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--accent-soft));
+  color: var(--accent-ink);
+  font-weight: 750;
+  padding: 4px 9px;
+  white-space: nowrap;
+}
+.chageun-today .today-school strong { color: var(--accent-ink); }
+.chageun-today .today-school p { margin: 0; line-height: 1.4; }
+
+.chageun-today .today-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 12px;
+  align-items: stretch;
+}
+.chageun-today .today-records { display: grid; align-content: start; gap: 12px; min-width: 0; }
+.app .chageun-today .today-columns .card {
+  min-width: 0;
+  padding: clamp(12px, 1.8vw, 24px);
+  box-shadow: none;
+}
+.chageun-today .today-columns h2 { font-weight: 750; }
+.chageun-today .today-columns .task-heading h2 { font-size: clamp(1.25rem, 2.5vw, 2rem); }
+.chageun-today .today-columns .task-list-compact .task.task-compact {
+  grid-template-columns: 36px minmax(0, max-content) minmax(0, 1fr) auto 44px 36px;
+  gap: clamp(4px, 1vw, 12px);
+  min-height: 54px;
+}
+.chageun-today .today-columns .task-compact .task-subject-tag {
+  max-width: clamp(65px, 12vw, 150px);
+  box-shadow: none !important;
+  border-radius: 999px;
+}
+.chageun-today .today-columns .task-compact .task-title {
+  font-size: clamp(.78rem, 1.35vw, 1rem);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.chageun-today .today-columns .task-checkbox {
+  position: relative;
+  width: 23px;
+  height: 23px;
+}
+.chageun-today .today-columns .task-checkbox::after {
+  content: "";
+  position: absolute;
+  inset: -10px -7px;
+}
+.chageun-today .today-task-duration {
+  font-size: clamp(.7rem, 1.3vw, .95rem);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.app .chageun-today .today-columns .task-time-action {
+  display: grid;
+  place-items: center;
   min-height: 44px;
-  padding: 0 16px;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  color: var(--text);
+  width: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.app .chageun-today .today-columns .task-time-action:disabled { opacity: .5; }
+.app .chageun-today .today-columns .task-time-play { opacity: 1; font-size: 14px; }
+.chageun-today .today-columns .task-menu-trigger { width: 36px; height: 44px; }
+.chageun-today .today-columns :is(.task-add-toggle, .today-outline-action) {
+  min-height: 44px;
+  border-color: var(--accent-border);
+  color: var(--accent-ink);
+}
+.chageun-today .today-columns .timeline-scroll { max-height: clamp(250px, 43dvh, 520px); }
+.chageun-today .today-memo h2 { margin: 0 0 8px; }
+.chageun-today .today-memo form {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+}
+.chageun-today .today-memo textarea {
+  min-height: 44px;
+  min-width: 0;
+  margin: 0;
   background: var(--panel);
 }
-.chageun-today .today-slide-switch button[aria-pressed="true"] {
-  background: var(--accent-strong, #245dd5);
-  color: #fff;
+.chageun-today .today-memo button { flex-shrink: 0; }
+
+@media (max-width: 740px) {
+  .chageun-today .today-columns { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 720px) {
-  .chageun-today .today-panel-grid { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 480px) {
+  .chageun-today .today-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 0;
+    padding: 12px 6px;
+  }
+  .chageun-today .today-summary .today-school {
+    grid-column: 1 / -1;
+    border-inline-start: 0;
+    border-top: 1px solid var(--accent-border);
+    padding-top: 8px;
+  }
+  .chageun-today .today-columns .task-list-compact .task.task-compact {
+    grid-template-columns: 28px minmax(0, 1fr) auto 44px 36px;
+    grid-template-rows: auto auto;
+    row-gap: 3px;
+    padding-block: 7px;
+  }
+  .chageun-today .today-columns .task-subject-tag { grid-area: 1 / 2; max-width: 100%; justify-self: start; }
+  .chageun-today .today-columns .task-title { grid-area: 2 / 2; }
+  .chageun-today .today-columns :is(.task-checkbox, .today-task-duration, .task-time-action, .task-menu-wrap) { grid-row: 1 / 3; }
 }

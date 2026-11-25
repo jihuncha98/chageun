@@ -2,7 +2,7 @@ import {readdir,writeFile} from 'node:fs/promises';
 import {join,relative} from 'node:path';
 import {readFile} from 'node:fs/promises';
 const root='out';const base=process.env.NEXT_PUBLIC_BASE_PATH??'/chageun';const files=[];
-async function walk(dir){for(const e of await readdir(dir,{withFileTypes:true})){const p=join(dir,e.name);if(e.isDirectory())await walk(p);else if(/\.(js|css|woff2)$/.test(p)&&!p.endsWith('sw.js'))files.push(`${base}/${relative(root,p).replaceAll('\\','/')}`);}}
+async function walk(dir){for(const e of await readdir(dir,{withFileTypes:true})){const p=join(dir,e.name);if(e.isDirectory())await walk(p);else if((/\.(js|css|woff2)$/.test(p)&&!p.endsWith('sw.js'))||/^title(?:8|9|10)\.[a-f0-9]+\.png$/.test(e.name))files.push(`${base}/${relative(root,p).replaceAll('\\','/')}`);}}
 const pushHandlers=await readFile('scripts/push-handlers.js','utf8');
 await walk(root);files.push(`${base}/`,`${base}/index.html`);
 await writeFile(join(root,'sw.js'),`const CACHE='chageun-shell-${Date.now()}';const FILES=${JSON.stringify(files)};
