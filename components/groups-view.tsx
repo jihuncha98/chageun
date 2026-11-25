@@ -1,13 +1,13 @@
 'use client';
 import SharedStudyStatistics,{type StatisticsMember} from './shared-study-statistics';
-import {TitleBadge} from './title-badge';
+import {TitleEmblem} from './title-badge';
 
 import {useCallback,useEffect,useRef,useState,type FormEvent} from 'react';
 import {supabase} from '../lib/supabase';
 import {sharedStudyTime} from '../lib/live-board-time';
 import {studyDay} from '../lib/study-day';
 import {socialNames} from '../lib/visible-names';
-import {friendLastSeen,friendTime,validFriendCode} from '../lib/friends';
+import {friendTime,validFriendCode} from '../lib/friends';
 import {clampGroupPage,GROUP_BOARD_PAGE_SIZE,groupPageCount,groupViewDescription,validGroupName,type GroupBoardRow,type GroupOverview} from '../lib/groups';
 
 const message=(error:unknown)=>error && typeof error==='object' && 'message' in error && typeof error.message==='string'?error.message:'연결을 확인해 주세요.';
@@ -21,6 +21,8 @@ export default function GroupsView({now,userId}:{now:number;userId:string}){
  const [selectedId,setSelectedId]=useState('');
  const [page,setPage]=useState(1);
  const [memberShown,setMemberShown]=useState(20);
+ const [showManagement,setShowManagement]=useState(false);
+ const createPanel=useRef<HTMLDetailsElement>(null);
  const [groupName,setGroupName]=useState('');
  const [inviteCode,setInviteCode]=useState('');
  const [busy,setBusy]=useState(false);
@@ -37,7 +39,7 @@ export default function GroupsView({now,userId}:{now:number;userId:string}){
  const pageCount=groupPageCount(group?.members.length??0);
 
  const refresh=useCallback(async(force=false,overrideGroup?:string,overridePage?:number)=>{
-  if(!supabase)return;
+  if(!supabase){setLoading(false);setError('서버에 연결할 수 없어요.');return;}
   if(!navigator.onLine){if(mounted.current){setError('오프라인이에요. 연결을 복구한 뒤 새로고침해 주세요.');setLoading(false);}return;}
   if(fetching.current&&!force)return;
   fetching.current=true;
@@ -111,56 +113,106 @@ export default function GroupsView({now,userId}:{now:number;userId:string}){
    setNotice(success);
    if(name==='group_create'&&typeof data==='string'){
     selectedRef.current=data;pageRef.current=1;setSelectedId(data);setPage(1);
+    setShowManagement(false);setMemberShown(20);setSummary(null);setBoard([]);
    }
    await refresh(true);
    return true;
   }catch(e){setError(message(e));return false;}
   finally{setBusy(false);}
  }
- function pick(id:string){selectedRef.current=id;pageRef.current=1;setSelectedId(id);setPage(1);setMemberShown(20);setBoard([]);setError('');void refresh(true,id,1);}
- function changePage(next:number){const n=clampGroupPage(next,group?.members.length??0);pageRef.current=n;setPage(n);setBoard([]);void refresh(true,selectedId,n);}
- async function create(e:FormEvent<HTMLFormElement>){e.preventDefault();if(!validGroupName(groupName)){setError('그룹 이름은 2~40자로 입력해 주세요.');return;}if(await act('group_create',{p_name:groupName.trim()},'그룹을 만들었어요. 친구 코드를 입력해 초대해 보세요.'))setGroupName('');}
+ function pick(id:string){selectedRef.current=id;pageRef.current=1;setSelectedId(id);setPage(1);setMemberShown(20);setShowManagement(false);setSummary(null);setLoading(true);setBoard([]);setError('');void refresh(true,id,1);}
+ function changePage(next:number){const n=clampGroupPage(next,group?.members.length??0);pageRef.current=n;setPage(n);setLoading(true);setBoard([]);void refresh(true,selectedId,n);}
+ async function create(e:FormEvent<HTMLFormElement>){e.preventDefault();if(!validGroupName(groupName)){setError('그룹 이름은 2~40자로 입력해 주세요.');return;}if(await act('group_create',{p_name:groupName.trim()},'그룹을 만들었어요. 친구 코드를 입력해 초대해 보세요.')){setGroupName('');createPanel.current?.removeAttribute('open');}}
  async function invite(e:FormEvent<HTMLFormElement>){e.preventDefault();if(!group)return;if(!validFriendCode(inviteCode)){setError('16자리 친구 코드를 정확히 입력해 주세요.');return;}if(await act('group_invite',{p_group:group.id,p_code:inviteCode.trim().toUpperCase()},'초대를 보냈어요. 상대방이 수락하면 그룹원이 돼요.'))setInviteCode('');}
  const pageNumbers=Array.from({length:Math.min(5,pageCount)},(_,i)=>Math.max(1,Math.min(pageCount-4,page-2))+i);
  return <div className="groups-view">
   {statsMember&&<SharedStudyStatistics key={statsMember.id} member={statsMember} now={now} onClose={()=>setStatsMember(null)}/>}
-  <section className="card">
-   <div className="section-title"><h2>함께 공부하는 그룹</h2><button className="small" disabled={busy||loading} onClick={()=>void refresh(true)}>새로고침</button></div>
-   <p className="fine">그룹에 가입해도 1:1 친구가 자동 추가되지는 않지만, 그룹 안에서는 별도 친구 신청 없이 서로 연결돼요. 직접 친구와 같은 그룹원은 서로의 날짜별·과목별 공부 시간 합계를 볼 수 있어요. 할 일·시간표·이메일은 비공개예요.</p>
-   {loading&&<p role="status">그룹을 불러오는 중…</p>}
+  <section className="card group-sidebar" aria-label="내 그룹">
+   <h2>내 그룹</h2>
+   {overview.groups.length>0&&<div className="group-sidebar-list" role="group" aria-label="그룹 선택">
+    {overview.groups.map(item=><button type="button" className="group-sidebar-item" aria-pressed={item.id===selectedId}
+     onClick={()=>pick(item.id)} disabled={busy} key={item.id}><strong>{item.name}</strong><small>{item.members.length}명</small></button>)}
+   </div>}
+   {!loading&&!overview.groups.length&&<p>아직 참여 중인 그룹이 없어요.</p>}
+   <div className="group-sidebar-actions">
+    <details ref={createPanel} className="group-sidebar-details">
+     <summary>+ 그룹 만들기</summary>
+     <form className="group-create-form" onSubmit={create}>
+      <label>새 그룹 이름<input value={groupName} onChange={e=>setGroupName(e.target.value)} maxLength={40} minLength={2} placeholder="예: 함께 수능 준비" required/></label>
+      <button className="primary compact" disabled={busy||loading||!validGroupName(groupName)}>만들기</button>
+     </form>
+    </details>
+    {overview.invitations.length>0&&<details className="group-sidebar-details">
+     <summary>받은 초대 <span className="group-invite-count">{overview.invitations.length}</span></summary>
+     {overview.invitations.map(inv=><div className="group-invitation" key={inv.id}>
+      <strong>{inv.name}</strong>
+      <div className="actions">
+       <button className="small blue" disabled={busy} onClick={()=>void act('group_respond',{p_group:inv.id,p_accept:true},'그룹 초대를 수락했어요.')}>참여</button>
+       <button className="small" disabled={busy} onClick={()=>void act('group_respond',{p_group:inv.id,p_accept:false},'그룹 초대를 거절했어요.')}>거절</button>
+      </div>
+     </div>)}
+    </details>}
+   </div>
+  </section>
+  <div className="group-main">
    {error&&<p role="alert" className="notice error">{error}</p>}
    {notice&&<p role="status" className="notice">{notice}</p>}
-   <details><summary>새 그룹 만들기</summary><form className="group-create-form" onSubmit={create}>
-    <label>새 그룹 이름<input value={groupName} onChange={e=>setGroupName(e.target.value)} maxLength={40} minLength={2} placeholder="예: 함께 수능 준비" required/></label>
-    <button className="primary compact" disabled={busy||loading||!validGroupName(groupName)}>+ 그룹 만들기</button>
-   </form></details>
-  </section>
-  {overview.invitations.length>0&&<section className="card below"><h2>받은 그룹 초대 · {overview.invitations.length}</h2>
-   {overview.invitations.map(inv=><div className="record-row" key={inv.id}><div className="record-details"><strong>{inv.name}</strong><p>그룹 참여 요청이 도착했어요.</p></div><div className="actions"><button className="small blue" disabled={busy} onClick={()=>void act('group_respond',{p_group:inv.id,p_accept:true},'그룹 초대를 수락했어요.')}>참여</button><button className="small" disabled={busy} onClick={()=>void act('group_respond',{p_group:inv.id,p_accept:false},'그룹 초대를 거절했어요.')}>거절</button></div></div>)}
-  </section>}
-  {overview.groups.length>0&&<section className="card below"><div className="section-title"><h2>내 그룹</h2><span>{overview.groups.length}개 그룹</span></div>
-   <div className="group-picker" role="group" aria-label="그룹 선택">{overview.groups.map(g=><button type="button" className="group-picker-button" aria-pressed={g.id===selectedId} onClick={()=>pick(g.id)} key={g.id}><strong>{g.name}</strong><small>{g.members.length}명 · {g.isOwner?'관리자':'그룹원'}</small></button>)}</div>
-  </section>}
-  {group&&<>
-   <section className="card below social-rank">
-    <div className="section-title"><h2>{group.name}</h2><span>그룹원 {group.members.length}명</span></div>
-    <h3>오늘의 순위</h3>{summary&&shareEnabled&&<div className="month-summary"><div>공개된 총 순공<strong>{friendTime((sharedStudyTime(summary.total,false,boardReceivedAt,now)??0)+summary.active*(sharedStudyTime(0,true,boardReceivedAt,now,navigator.onLine)??0))}</strong></div><div>공부 중<strong>{summary.active}명</strong></div></div>}
+   {!group&&<section className="card">
+    <div className="section-title"><h2>{loading?'그룹을 불러오는 중…':'그룹'}</h2>
+     <button className="small" disabled={busy||loading} onClick={()=>void refresh(true)}>새로고침</button>
+    </div>
+    {!loading&&<p>왼쪽에서 그룹을 만들거나 받은 초대를 확인해 보세요.</p>}
+   </section>}
+   {group&&<>
+   <section className="card group-board-panel">
+    <div className="section-title group-board-header">
+     <div>
+      <h2>{group.name}</h2>
+      <p>그룹원 {group.members.length}명{summary&&shareEnabled&&<> · 공부 중 {summary.active}명 · 그룹 순공 {friendTime(
+       (sharedStudyTime(summary.total,false,boardReceivedAt,now)??0)+summary.active*(sharedStudyTime(0,true,boardReceivedAt,now,typeof navigator==='undefined'||navigator.onLine)??0)
+      )}</>}</p>
+     </div>
+     <div className="group-board-actions">
+      <button type="button" className="small" disabled={busy||loading} onClick={()=>void refresh(true)}>새로고침</button>
+      <button type="button" className="small" aria-expanded={showManagement} aria-controls="group-management" onClick={()=>setShowManagement(open=>!open)}>그룹 관리</button>
+     </div>
+    </div>
+    <h3 className="group-board-title">오늘 순위</h3>
     {!shareEnabled&&<p className="notice">{groupViewDescription(false)}</p>}
-    <div className="group-rank-list">{board.map(row=><article key={row.member_id} className={`friend-rank-row ${row.is_me?'friend-self':''}`}>
-     <div className="friend-rank-number">{row.position===null?'—':`${row.position}위`}</div>
-     <div className="friend-rank-user"><strong>{row.is_me?`${row.display_name} (나)`:<button type="button" className="statistics-member-link" aria-label={`${row.display_name}의 공부 통계`} onClick={()=>setStatsMember({id:row.member_id,name:row.display_name})}>{row.display_name}</button>} <TitleBadge label={row.title} level={row.title_level}/></strong><span>{row.shared?(row.studying?'● 공부 중':'○ 공부 중 아님'):'공유하지 않음'}</span><small>{row.shared?friendLastSeen(row.last_seen_at,now):'활동 정보 비공개'}</small></div>
-     <div className="friend-rank-time">{friendTime(sharedStudyTime(row.total_ms,row.studying,boardReceivedAt,now,typeof navigator==='undefined'||navigator.onLine))}</div>
-    </article>)}{board.length===0&&<p className="empty">표시할 순위가 없어요.</p>}</div>
+    {loading&&<p role="status">순위를 불러오는 중…</p>}
+    {board.length>0&&<div className="group-rank-grid" aria-label="그룹 순위">
+     {board.map(row=>{
+      const Card=row.is_me?'article':'button';
+      const cardAction=row.is_me?{}:{
+       type:'button' as const,
+       onClick:()=>setStatsMember({id:row.member_id,name:row.display_name}),
+      };
+      return <Card key={row.member_id} className={`group-member-card ${row.is_me?'group-member-self':''}`} {...cardAction}>
+       <span className="group-member-card-top">
+        <span>{row.position===null?'—':`${row.position}위`}</span>
+        {row.shared&&row.studying&&<span className="group-member-studying">공부 중</span>}
+       </span>
+       <TitleEmblem level={row.title_level} label={row.title}/>
+       <strong className="group-member-name">{row.display_name}{row.is_me&&<span> (나)</span>}</strong>
+       <span className="group-member-title">{row.title||'차근 사용자'}</span>
+       <span className="group-member-time">{row.shared?friendTime(sharedStudyTime(
+        row.total_ms,row.studying,boardReceivedAt,now,typeof navigator==='undefined'||navigator.onLine
+       )):'비공개'}</span>
+      </Card>;
+     })}
+    </div>}
+    {!loading&&board.length===0&&<p className="empty">표시할 순위가 없어요.</p>}
     {pageCount>1&&<div className="record-pagination" role="navigation" aria-label="그룹 순위 페이지">
-     <button className="small" onClick={()=>changePage(1)} disabled={busy||page===1} aria-label="첫 페이지">« 처음</button>
-     <button className="small" onClick={()=>changePage(page-1)} disabled={busy||page===1} aria-label="이전 페이지">‹ 이전</button>
-     {pageNumbers.map(n=><button key={n} className="small" aria-current={n===page?'page':undefined} onClick={()=>changePage(n)} disabled={busy}>{n}</button>)}
-     <button className="small" onClick={()=>changePage(page+1)} disabled={busy||page===pageCount} aria-label="다음 페이지">다음 ›</button>
-     <button className="small" onClick={()=>changePage(pageCount)} disabled={busy||page===pageCount} aria-label="마지막 페이지">끝 »</button>
+     <button className="small" onClick={()=>changePage(1)} disabled={busy||loading||page===1} aria-label="첫 페이지">« 처음</button>
+     <button className="small" onClick={()=>changePage(page-1)} disabled={busy||loading||page===1} aria-label="이전 페이지">‹ 이전</button>
+     {pageNumbers.map(n=><button key={n} className="small" aria-current={n===page?'page':undefined} onClick={()=>changePage(n)} disabled={busy||loading}>{n}</button>)}
+     <button className="small" onClick={()=>changePage(page+1)} disabled={busy||loading||page===pageCount} aria-label="다음 페이지">다음 ›</button>
+     <button className="small" onClick={()=>changePage(pageCount)} disabled={busy||loading||page===pageCount} aria-label="마지막 페이지">끝 »</button>
     </div>}
    </section>
 
-   <section className="card below"><div className="section-title"><h2>그룹원</h2><span>{group.members.length}명</span></div>
+   <div id="group-management" className="group-management" hidden={!showManagement}>
+   <section className="card"><div className="section-title"><h2>그룹원</h2><span>{group.members.length}명</span></div>
     {group.members.slice(0,memberShown).map(member=><div className="record-row" key={member.userId}>
      <div className="record-details"><strong>{member.userId===userId?member.nickname:<button type="button" className="statistics-member-link" aria-label={`${member.nickname}의 공부 통계`} onClick={()=>setStatsMember({id:member.userId,name:member.nickname})}>{member.nickname}</button>}</strong><p>{member.isOwner?'그룹 관리자':'그룹원'}</p></div>
      {group.isOwner&&!member.isOwner&&<div className="actions">
@@ -174,7 +226,7 @@ export default function GroupsView({now,userId}:{now:number;userId:string}){
      {group.pendingInvites.length>0&&<div className="group-pending"><h3>수락 대기 중 · {group.pendingInvites.length}명</h3>{group.pendingInvites.map(member=><div className="record-row" key={member.userId}><span>{member.nickname}</span><button className="small" disabled={busy} onClick={()=>void act('group_remove_member',{p_group:group.id,p_member:member.userId},'초대를 취소했어요.')}>초대 취소</button></div>)}</div>}
     </>}
    </section>
-   <section className="card below"><h2>그룹 관리</h2><p>{group.isOwner?'관리자는 그룹을 삭제하거나 다른 그룹원에게 관리 권한을 넘길 수 있어요.':'그룹에서 나가면 이 그룹을 통한 공부 시간 공유가 끝나요.'}</p>
+   <section className="card"><h2>그룹 관리</h2><p>{group.isOwner?'관리자는 그룹을 삭제하거나 다른 그룹원에게 관리 권한을 넘길 수 있어요.':'그룹에서 나가면 이 그룹을 통한 공부 시간 공유가 끝나요.'}</p>
     {group.isOwner&&<details key={group.id}>
      <summary>그룹 이름 변경</summary>
      <form className="group-create-form" onSubmit={async e=>{
@@ -190,7 +242,8 @@ export default function GroupsView({now,userId}:{now:number;userId:string}){
     </details>}
     {group.isOwner?<button className="small" disabled={busy} onClick={()=>{if(confirm(`「${group.name}」 그룹을 삭제할까요? 그룹이 즉시 비활성화되고 전체 관리자가 7일 이내 복구할 수 있어요. 개인 공부 기록은 삭제되지 않아요.`))void act('group_delete',{p_group:group.id},'그룹을 삭제했어요. 전체 관리자는 7일 이내 복구할 수 있어요.');}}>그룹 삭제</button>:<button className="small" disabled={busy} onClick={()=>{if(confirm(`「${group.name}」 그룹에서 나갈까요?`))void act('group_leave',{p_group:group.id},'그룹에서 나왔어요.');}}>그룹 나가기</button>}
    </section>
+   </div>
   </>}
-  {!loading&&!overview.groups.length&&!overview.invitations.length&&<p className="empty">아직 참여 중인 그룹이 없어요. 그룹을 만들거나 친구에게 초대를 요청해 보세요.</p>}
+  </div>
  </div>;
 }

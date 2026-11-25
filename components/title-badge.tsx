@@ -16,11 +16,12 @@ const names = [
  '차근 달인', '차근 마스터', '차근 거장', '차근 전설', '차지훈',
 ];
 
-export function TitleEmblem({level=1}:{level?:number|null}){
- const n=typeof level==='number'&&Number.isInteger(level)&&level>=1&&level<=names.length?level:1;
+export function TitleEmblem({level,label}:{level?:number|null;label?:string}){
+ const requested=level??names.indexOf(label??'')+1;
+ const n=typeof requested==='number'&&Number.isInteger(requested)&&requested>=1&&requested<=badges.length?requested:1;
  return <Image className="title-emblem" src={badges[n-1]} alt="" width={120} height={140} unoptimized/>;
 }
 
 export function TitleBadge({label,level}:{label?:string;level?:number}){
- return <em className="rank-title"><TitleEmblem level={level??names.indexOf(label??'')+1}/><span>{label??names[0]}</span></em>;
+ return <em className="rank-title"><TitleEmblem level={level} label={label}/><span>{label??names[0]}</span></em>;
 }

@@ -158,50 +158,160 @@
 .app .friends-view .friend-self { background: var(--accent-soft); border-radius: 11px; }
 .app .friends-view .empty { padding: 18px 0; }
 
-/* --- Group dashboard: creation + invitations + concise member cards --- */
+/* --- Groups: navigation rail and compact study cards --- */
 .app .groups-view {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--ui-gap); align-items: start;
+  display: grid;
+  grid-template-columns: minmax(166px, .9fr) minmax(0, 3.1fr);
+  gap: var(--ui-gap);
+  align-items: start;
 }
-.app .groups-view > :is(section.card,div) { min-width: 0; margin: 0; }
-.app .groups-view > section.card:first-child,
-.app .groups-view > section.card:has(.group-picker),
-.app .groups-view > section.card:has(.group-create-form),
-.app .groups-view > section.card:has(.group-pending) { grid-column: 1 / -1; }
-.app .groups-view > section.card:first-child > p:not([role]):not(.notice),
-.app .groups-view > section.card:first-child > p.fine,
-.app .groups-view > section.card:has(.group-rank-list) > p:not(.notice) { display: none; }
+.app .groups-view > :is(section, div) { min-width: 0; }
+.app .groups-view > .group-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: 14px;
+}
+.app .groups-view .group-sidebar h2,
+.app .groups-view .group-board-header p { margin: 0; }
+.group-sidebar-list { display: grid; gap: 5px; }
+.app .groups-view .group-sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid transparent;
+  border-inline-start: 3px solid transparent;
+  border-radius: 7px;
+  text-align: start;
+}
+.app .groups-view .group-sidebar-item[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-inline-start-color: var(--accent);
+}
+.group-sidebar-item strong,
+.group-board-header h2,
+.group-invitation strong { overflow-wrap: anywhere; }
+.group-sidebar-item small { flex: none; }
+.group-sidebar-actions { display: grid; gap: 8px; margin-top: auto; }
+.app .groups-view .group-sidebar-details > summary,
+.app .groups-view .group-management details > summary {
+  margin: 0;
+  background: var(--panel);
+  color: var(--text);
+  border-color: var(--line);
+}
+.group-invite-count {
+  display: inline-block;
+  min-width: 1.45em;
+  margin-inline-start: 3px;
+  padding-inline: 3px;
+  text-align: center;
+  border-radius: 99px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.group-invitation { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.group-invitation .actions { margin-top: 5px; }
 .app .groups-view .group-create-form {
   display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 10px;
 }
-.app .groups-view .group-create-form label { flex: 1 1 180px; margin: 0; }
+.app .groups-view .group-create-form label { flex: 1 1 180px; margin: 0; min-width: 0; }
 .app .groups-view .group-create-form button { margin: 0; }
-.app .groups-view .group-picker {
-  display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr));
-  gap: 10px; margin-top: 8px;
+.group-main,
+.group-management:not([hidden]) { display: grid; gap: 12px; }
+.group-board-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.app .groups-view .group-board-header h2 { font-size: clamp(1.2rem, 2.3vw, 1.65rem); }
+.app .groups-view .group-board-title {
+  margin: 14px 0 10px;
+  padding-block-end: 7px;
+  border-bottom: 1px solid var(--line);
+  color: var(--accent-ink);
+  font-size: .95rem;
+  font-weight: 750;
 }
-.app .groups-view .group-picker-button {
-  border: 1px solid var(--line); border-radius: 13px; padding: 14px 16px;
-  min-height: 75px; background: var(--bg); box-shadow: none;
+.group-rank-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
 }
-.app .groups-view .group-picker-button[aria-pressed='true'] {
-  border: 1px solid var(--accent); background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px var(--accent);
-  padding: 14px 16px;
+.app .groups-view .group-member-card {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto auto;
+  justify-items: center;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 154px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  color: var(--text);
+  text-align: center;
 }
-.app .groups-view .group-picker-button strong { font-size: 14px; }
-.app .groups-view .group-picker-button small { font-size: 11px; }
-.app .groups-view .group-rank-list { margin-top: 7px; max-height: 560px; overflow: auto; scrollbar-width: thin; }
-.app .groups-view .friend-rank-row { padding: 13px 5px; }
-.app .groups-view .friend-rank-number { min-width: 39px; font-size: 12px; }
-.app .groups-view .friend-rank-user strong { font-size: 13px; }
-.app .groups-view .friend-rank-user :is(span,small) { font-size: 11px; }
-.app .groups-view .friend-rank-time { font-size: 16px; font-weight: 820; font-variant-numeric: tabular-nums; color: var(--accent-strong); }
+.app .groups-view button.group-member-card:hover {
+  background: var(--accent-tint);
+  border-color: var(--accent-border);
+}
+.app .groups-view .group-member-self {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+}
+.group-member-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 3px;
+  font-size: .7rem;
+  white-space: nowrap;
+}
+.group-member-studying { color: var(--accent-ink); }
+.group-member-studying::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-inline-end: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: .1em;
+}
+.app .groups-view .group-member-card .title-emblem {
+  display: block;
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+}
+.group-member-name {
+  font-size: .92rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+.group-member-name > span { color: var(--accent-ink); font-size: .78em; }
+.group-member-title { color: var(--muted); font-size: .76rem; overflow-wrap: anywhere; }
+.group-member-time { font-size: clamp(.9rem, 1.65vw, 1.2rem); font-variant-numeric: tabular-nums; font-weight: 750; }
 .app .groups-view .group-invite-form { margin-top: 14px; padding-top: 14px; }
 .app .groups-view .group-invite-form :is(input,button) { max-width: 100%; }
 .app .groups-view .group-pending { margin-top: 12px; }
 .app .groups-view .record-row { padding: 11px 0; }
 .app .groups-view .record-pagination { margin-top: 13px; }
+@media (max-width: 900px) {
+  .group-rank-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .app .groups-view { grid-template-columns: minmax(0, 1fr); }
+  .group-sidebar-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 470px) {
+  .group-rank-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 /* --- Exams: dense countdown + monthly calendar side by side --- */
 .app .exam-section {
@@ -331,25 +441,21 @@
   background: linear-gradient(125deg,var(--accent-soft),var(--panel));
 }
 .app.dark .friends-view .friend-share-strip,
-.app.dark .groups-view .group-picker-button,
 .app.dark .exam-section .calendar-day,
 .app.dark .statistics-view .stats-overview > div,
 .app.dark .admin-panel .admin-item { background: var(--bg); }
-.app.dark .groups-view .group-picker-button[aria-pressed='true'],
 .app.dark .exam-section .calendar-day.chosen,
 .app.dark .statistics-view .stats-day.selected { background: var(--accent-soft); color: var(--text); }
 .app.dark .friends-view .friend-rank-time,
-.app.dark .groups-view .friend-rank-time,
 .app.dark .friends-view .friend-code-panel .eyebrow { color: var(--accent-mid); }
 
 /* --- Tablet and mobile; no horizontal clipping, preserve touch targets --- */
 @media (max-width: 1190px) {
-  .app .friends-view,.app .groups-view,.app .exam-section,.app .assessments-view,
+  .app .friends-view,.app .exam-section,.app .assessments-view,
   .app .workspace-tab-content:has(.appearance-settings) {
     grid-template-columns: minmax(0,1fr);
   }
   .app .friends-view > section.card,
-  .app .groups-view > section.card,
   .app .exam-section > section.card,
   .app .assessments-view > section.card,
   .app .workspace-tab-content:has(.appearance-settings) > section.card { grid-column: 1 / -1; }
@@ -377,7 +483,6 @@
   .app .friends-view .friend-code-form { flex-wrap: wrap; }
   .app .friends-view .friend-profile-grid form button,
   .app .friends-view .friend-code-form button { margin: 0; }
-  .app .groups-view .group-picker { grid-template-columns: repeat(auto-fill,minmax(min(100%,145px),1fr)); }
   .app .exam-section .calendar-day,.app .exam-section .calendar-empty { min-height: 56px; }
   .app .exam-section .calendar-day { padding: 6px; }
   .app .exam-section .calendar-day.chosen { padding: 5px; }
@@ -387,8 +492,7 @@
   .app .assessments-view .assessment-actions { margin-left: auto; }
   .app .statistics-view .stats-overview > div { padding: 12px; }
   .app .statistics-view .stats-overview strong { font-size: 17px; }
-  .app .friends-view .friend-rank-time,
-  .app .groups-view .friend-rank-time { font-size: 13px; }
+  .app .friends-view .friend-rank-time { font-size: 13px; }
   .app .workspace-tab-content:not(.chageun-today) button.small { min-height: 34px; }
 }
 @media (prefers-reduced-motion: reduce) {
