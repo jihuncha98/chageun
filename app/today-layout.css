@@ -275,3 +275,70 @@
   .chageun-today .today-columns .task-title { grid-area: 2 / 2; }
   .chageun-today .today-columns :is(.task-checkbox, .today-task-duration, .task-time-action, .task-menu-wrap) { grid-row: 1 / 3; }
 }
+
+.app[data-today="true"] .sync-strip {
+  position: relative;
+}
+.app .personal-quote {
+  position: absolute;
+  top: -23px;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, calc(100% - 156px));
+  text-align: center;
+  pointer-events: none;
+}
+.personal-quote-edit {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+  pointer-events: auto;
+}
+.personal-quote-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.personal-quote-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(13px, 2vw, 20px);
+  font-weight: 700;
+  line-height: 1.25;
+}
+.personal-quote-text.personal-quote-empty {
+  color: var(--muted);
+  font-size: clamp(12px, 1.7vw, 15px);
+  font-weight: 500;
+}
+.personal-quote-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(420px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  padding: 22px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+  text-align: start;
+  pointer-events: auto;
+}
+.personal-quote-dialog::backdrop { background: rgb(18 28 44 / 35%); }
+.personal-quote-dialog h2 { margin: 0 0 16px; }
+.personal-quote-count { float: right; color: var(--muted); }

@@ -15,6 +15,7 @@ import GroupsView from './groups-view';
 import Shop from './shop';
 import StudyStatistics from './study-statistics';
 import ProfileSettings from './profile-settings';
+import PersonalQuote from './personal-quote';
 import FocusMode from './focus-mode';
 import {shouldShowFocusMode} from '../lib/focus-mode';
 import {ddayLabel,kstToday} from '../lib/exam-planning';
@@ -111,7 +112,11 @@ export function Dashboard({store,tab,now,profileUser,onProfileSaved,onUnreadCoun
   />;
  }
  return <>
- <div className="sync-strip"><span className={v.pending||v.review?'pending':''}>{v.busy?'동기화 중…':v.status}</span><button className="small" onClick={()=>void store.sync()} disabled={v.busy}>다시 동기화</button></div>
+ <div className="sync-strip">
+  <span className={v.pending||v.review?'pending':''}>{v.busy?'동기화 중…':v.status}</span>
+  <button className="small" onClick={()=>void store.sync()} disabled={v.busy}>다시 동기화</button>
+  {tab==='오늘'&&<PersonalQuote user={profileUser} onSaved={onProfileSaved}/>}
+ </div>
  {(uiError||v.error)&&<div role="alert" className="notice error">{uiError||v.error}</div>}
  {v.pending&&<p className="fine">현재 이 기기에 저장된 기록입니다. 서버 저장 완료 전에는 다른 기기에서 보이지 않을 수 있어요. 동기화 전 브라우저 데이터를 지우지 마세요.</p>}
  {(v.review||v.remote)&&<section className="card conflict"><h2>기록 확인이 필요해요</h2><p>서로 다른 기기의 기록을 자동으로 버리지 않아요. 충돌한 항목은 선택하고, 겹친 시간은 통계 메뉴의 측정 기록 목록에서 수정해 주세요. 해결 전에는 합계를 표시하지 않아요.</p><button className="small" onClick={()=>download('chageun-conflict-backup.json',store.getLocal())}>기기 원본 내려받기</button>{conflict.map(c=><div key={`${c.collection}:${c.id}`} className="conflict-item"><p>{c.collection==='entries'?'타이머 기록':c.collection==='tasks'?'할 일':c.collection==='subjects'?'과목':'설정'} · {c.id.slice(0,8)}</p><details><summary>두 기록 비교</summary><p>이 기기: {describeRecord(c.local)}</p><p>다른 기기: {describeRecord(c.remote)}</p></details><select aria-label="사용할 기록" value={choices[`${c.collection}:${c.id}`]??''} onChange={e=>setChoices({...choices,[`${c.collection}:${c.id}`]:e.target.value as 'local'|'remote'})}><option value="">선택해 주세요</option><option value="local">이 기기의 변경 사용</option><option value="remote">다른 기기의 변경 사용</option></select></div>)}{v.remote&&<button className="primary" onClick={()=>void store.resolve(choices)}>선택한 내용으로 합치기</button>}</section>}
